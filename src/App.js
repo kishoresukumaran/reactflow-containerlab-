@@ -18,6 +18,12 @@ const App = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [yamlOutput, setYamlOutput] = useState("");
   const [topologyName, setTopologyName] = useState("container-lab-topology");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newNode, setNewNode] = useState(null);
+  const [nodeName, setNodeName] = useState("");
+  const [mgmtNetwork, setMgmtNetwork] = useState("");
+  const [ipv4Subnet, setIpv4Subnet] = useState("");
+  const [ipv6Subnet, setIpv6Subnet] = useState("");
 
   // Allow connections between any nodes
   const onConnect = useCallback(
@@ -51,8 +57,8 @@ const App = () => {
         data: { label: `${type} node` },
       };
 
-      setNodes((nds) => nds.concat(newNode));
-      updateYaml([...nodes, newNode], edges);
+      setNewNode(newNode);
+      setIsModalOpen(true);
     },
     [nodes, edges]
   );
@@ -78,6 +84,11 @@ const App = () => {
           target: edge.target,
         })),
       },
+      mgmt: {
+        network: mgmtNetwork,
+        "ipv4-subnet": ipv4Subnet,
+        "ipv6-subnet": ipv6Subnet,
+      },
     };
 
     setYamlOutput(yaml.dump(yamlData));
@@ -87,6 +98,38 @@ const App = () => {
   const handleTopologyNameChange = (event) => {
     setTopologyName(event.target.value);
     updateYaml(nodes, edges);
+  };
+
+  // Handle management inputs change
+  const handleMgmtNetworkChange = (event) => {
+    setMgmtNetwork(event.target.value);
+    updateYaml(nodes, edges);
+  };
+
+  const handleIpv4SubnetChange = (event) => {
+    setIpv4Subnet(event.target.value);
+    updateYaml(nodes, edges);
+  };
+
+  const handleIpv6SubnetChange = (event) => {
+    setIpv6Subnet(event.target.value);
+    updateYaml(nodes, edges);
+  };
+
+  // Handle node name change
+  const handleNodeNameChange = (event) => {
+    setNodeName(event.target.value);
+  };
+
+  // Handle modal submit
+  const handleModalSubmit = () => {
+    if (newNode) {
+      newNode.data.label = nodeName;
+      setNodes((nds) => nds.concat(newNode));
+      updateYaml([...nodes, newNode], edges);
+      setIsModalOpen(false);
+      setNodeName("");
+    }
   };
 
   // Define isValidConnection function to allow all connections
@@ -105,6 +148,34 @@ const App = () => {
                 type="text"
                 value={topologyName}
                 onChange={handleTopologyNameChange}
+              />
+            </div>
+            <div>
+              <h3>Management</h3>
+              <label htmlFor="mgmt-network">Network:</label>
+              <input
+                id="mgmt-network"
+                type="text"
+                value={mgmtNetwork}
+                onChange={handleMgmtNetworkChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="ipv4-subnet">IPv4 Subnet:</label>
+              <input
+                id="ipv4-subnet"
+                type="text"
+                value={ipv4Subnet}
+                onChange={handleIpv4SubnetChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="ipv6-subnet">IPv6 Subnet:</label>
+              <input
+                id="ipv6-subnet"
+                type="text"
+                value={ipv6Subnet}
+                onChange={handleIpv6SubnetChange}
               />
             </div>
             <Sidebar />
@@ -130,6 +201,19 @@ const App = () => {
             <textarea value={yamlOutput} readOnly />
           </div>
         </div>
+        {isModalOpen && (
+          <div className="modal">
+            <div className="modal-content">
+              <h2>Enter Node Name</h2>
+              <input
+                type="text"
+                value={nodeName}
+                onChange={handleNodeNameChange}
+              />
+              <button onClick={handleModalSubmit}>Submit</button>
+            </div>
+          </div>
+        )}
       </div>
     </ReactFlowProvider>
   );

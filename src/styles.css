@@ -1,0 +1,103 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+h1 {
+  text-align: center;
+}
+
+.dndflow {
+  display: flex;
+  height: 100%;
+}
+
+.node-panel {
+  width: 20%;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+.node-panel div {
+  margin-bottom: 10px;
+}
+
+.node-panel label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.node-panel input {
+  width: 100%;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+.node {
+  padding: 10px;
+  margin-bottom: 10px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
+  cursor: grab;
+}
+
+.reactflow-wrapper {
+  width: 60%;
+  height: 100%;
+  background-color: #e0e0e0;
+  overflow: hidden;
+}
+
+.yaml-output {
+  width: 20%;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border-left: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  resize: none;
+  background-color: #f9f9f9;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure the modal is on top */
+}
+
+.modal-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+.modal-content input {
+  width: 80%;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.modal-content button {
+  padding: 10px 20px;
+}
