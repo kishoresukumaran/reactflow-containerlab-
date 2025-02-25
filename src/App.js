@@ -6,11 +6,18 @@ import ReactFlow, {
   useEdgesState,
 } from "react-flow-renderer";
 import Sidebar from "./Sidebar";
+import CustomNode from "./CustomNode";
 import yaml from "js-yaml";
+import { saveAs } from "file-saver";
+import * as htmlToImage from 'html-to-image';
 import "./styles.css";
 
 let id = 0;
 const getId = () => `node_${id++}`;
+
+const nodeTypes = {
+  customNode: CustomNode,
+};
 
 const App = () => {
   const reactFlowWrapper = useRef(null);
@@ -52,7 +59,7 @@ const App = () => {
 
       const newNode = {
         id: getId(),
-        type,
+        type: 'customNode',
         position,
         data: { label: `${type} node` },
       };
@@ -135,6 +142,26 @@ const App = () => {
   // Define isValidConnection function to allow all connections
   const isValidConnection = () => true;
 
+  // Handle download YAML button click
+  const handleDownloadYaml = () => {
+    const blob = new Blob([yamlOutput], { type: "text/yaml;charset=utf-8" });
+    saveAs(blob, `${topologyName}.yml`);
+  };
+
+  // Handle download PNG button click
+  const handleDownloadPng = () => {
+    htmlToImage.toPng(reactFlowWrapper.current)
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = `${topologyName}.png`;
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch((error) => {
+        console.error('Error generating PNG:', error);
+      });
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -195,10 +222,13 @@ const App = () => {
               isValidConnection={isValidConnection}
               edgeType="straight"
               fitView
+              nodeTypes={nodeTypes}
             />
+            <button className="download-button" onClick={handleDownloadPng}>Download Topology as PNG</button>
           </div>
           <div className="yaml-output">
             <textarea value={yamlOutput} readOnly />
+            <button onClick={handleDownloadYaml}>Download YAML</button>
           </div>
         </div>
         {isModalOpen && (

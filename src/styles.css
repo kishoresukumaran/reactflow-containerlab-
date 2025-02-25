@@ -54,6 +54,7 @@ h1 {
   height: 100%;
   background-color: #e0e0e0;
   overflow: hidden;
+  position: relative;
 }
 
 .yaml-output {
@@ -62,6 +63,8 @@ h1 {
   background-color: #f9f9f9;
   border-left: 1px solid #ccc;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 textarea {
@@ -70,6 +73,28 @@ textarea {
   border: none;
   resize: none;
   background-color: #f9f9f9;
+  flex-grow: 1;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.download-button {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 10;
 }
 
 .modal {
@@ -100,4 +125,12 @@ textarea {
 
 .modal-content button {
   padding: 10px 20px;
+}
+
+.custom-node {
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  text-align: center;
 }
