@@ -1,9 +1,11 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
   useNodesState,
   useEdgesState,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from "react-flow-renderer";
 import Sidebar from "./Sidebar";
 import CustomNode from "./CustomNode";
@@ -31,6 +33,21 @@ const App = () => {
   const [mgmtNetwork, setMgmtNetwork] = useState("");
   const [ipv4Subnet, setIpv4Subnet] = useState("");
   const [ipv6Subnet, setIpv6Subnet] = useState("");
+  const [kinds, setKinds] = useState([]);
+  const [defaultKind, setDefaultKind] = useState("");
+
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === "Escape") {
+        setIsModalOpen(false);
+        setNodeName("");
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => {
+      window.removeEventListener("keydown", handleEsc);
+    };
+  }, []);
 
   // Allow connections between any nodes
   const onConnect = useCallback(
@@ -76,11 +93,37 @@ const App = () => {
     event.dataTransfer.dropEffect = "move";
   }, []);
 
+  // Handle element removal
+  const onElementsRemove = useCallback(
+    (elementsToRemove) => {
+      const nodeChanges = elementsToRemove.filter((el) => el.id.startsWith('node_')).map((node) => ({ id: node.id, type: 'remove' }));
+      const edgeChanges = elementsToRemove.filter((el) => el.id.startsWith('edge_')).map((edge) => ({ id: edge.id, type: 'remove' }));
+      const updatedNodes = applyNodeChanges(nodeChanges, nodes);
+      const updatedEdges = applyEdgeChanges(edgeChanges, edges);
+      setNodes(updatedNodes);
+      setEdges(updatedEdges);
+      updateYaml(updatedNodes, updatedEdges);
+    },
+    [nodes, edges]
+  );
+
   // Update YAML dynamically
   const updateYaml = (updatedNodes, updatedEdges) => {
     const yamlData = {
       name: topologyName,
       topology: {
+        kinds: kinds.reduce((acc, kind) => {
+          const kindData = {};
+          if (kind.startupConfig !== null) kindData["startup-config"] = kind.startupConfig;
+          if (kind.image !== null) kindData.image = kind.image;
+          if (kind.exec.length > 0) kindData.exec = kind.exec.filter(line => line);
+          if (kind.binds.length > 0) kindData.binds = kind.binds.filter(line => line);
+          acc[kind.name] = kindData;
+          return acc;
+        }, {}),
+        defaults: {
+          kind: defaultKind,
+        },
         nodes: updatedNodes.map((node) => ({
           id: node.id,
           label: node.data.label,
@@ -123,6 +166,33 @@ const App = () => {
     updateYaml(nodes, edges);
   };
 
+  // Handle default kind change
+  const handleDefaultKindChange = (event) => {
+    setDefaultKind(event.target.value);
+    updateYaml(nodes, edges);
+  };
+
+  const handleKindChange = (index, field, value) => {
+    const newKinds = [...kinds];
+    newKinds[index][field] = value;
+    setKinds(newKinds);
+    updateYaml(nodes, edges);
+  };
+
+  const handleAddKind = () => {
+    setKinds([...kinds, { name: "", startupConfig: null, image: null, exec: [], binds: [] }]);
+  };
+
+  const handleRemoveKind = (index) => {
+    const removedKind = kinds[index].name;
+    const newKinds = kinds.filter((_, i) => i !== index);
+    setKinds(newKinds);
+    if (defaultKind === removedKind) {
+      setDefaultKind("");
+    }
+    updateYaml(nodes, edges);
+  };
+
   // Handle node name change
   const handleNodeNameChange = (event) => {
     setNodeName(event.target.value);
@@ -137,6 +207,12 @@ const App = () => {
       setIsModalOpen(false);
       setNodeName("");
     }
+  };
+
+  // Handle modal cancel
+  const handleModalCancel = () => {
+    setIsModalOpen(false);
+    setNodeName("");
   };
 
   // Define isValidConnection function to allow all connections
@@ -205,6 +281,101 @@ const App = () => {
                 onChange={handleIpv6SubnetChange}
               />
             </div>
+            <div>
+              <h3>Global Settings</h3>
+              <label htmlFor="default-kind">Default Kind:</label>
+              <input
+                id="default-kind"
+                type="text"
+                value={defaultKind}
+                onChange={handleDefaultKindChange}
+              />
+              <h4>Kinds</h4>
+              <button onClick={handleAddKind}>Add Kind</button>
+              {kinds.map((kind, index) => (
+                <div key={index} className="kind-section">
+                  <input
+                    type="text"
+                    placeholder="Kind Name"
+                    value={kind.name}
+                    onChange={(e) => handleKindChange(index, "name", e.target.value)}
+                  />
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={kind.startupConfig !== null}
+                      onChange={(e) => handleKindChange(index, "startupConfig", e.target.checked ? "" : null)}
+                    />
+                    Startup Config
+                  </label>
+                  {kind.startupConfig !== null && (
+                    <input
+                      type="text"
+                      value={kind.startupConfig}
+                      onChange={(e) => handleKindChange(index, "startupConfig", e.target.value)}
+                    />
+                  )}
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={kind.image !== null}
+                      onChange={(e) => handleKindChange(index, "image", e.target.checked ? "" : null)}
+                    />
+                    Image
+                  </label>
+                  {kind.image !== null && (
+                    <input
+                      type="text"
+                      value={kind.image}
+                      onChange={(e) => handleKindChange(index, "image", e.target.value)}
+                    />
+                  )}
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={kind.exec.length > 0}
+                      onChange={(e) => handleKindChange(index, "exec", e.target.checked ? [""] : [])}
+                    />
+                    Exec
+                  </label>
+                  {kind.exec.length > 0 && kind.exec.map((line, execIndex) => (
+                    <input
+                      key={execIndex}
+                      type="text"
+                      value={line}
+                      onChange={(e) => {
+                        const newExec = [...kind.exec];
+                        newExec[execIndex] = e.target.value;
+                        handleKindChange(index, "exec", newExec);
+                      }}
+                    />
+                  ))}
+                  {kind.exec.length > 0 && <button onClick={() => handleKindChange(index, "exec", [...kind.exec, ""])}>Add Exec</button>}
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={kind.binds.length > 0}
+                      onChange={(e) => handleKindChange(index, "binds", e.target.checked ? [""] : [])}
+                    />
+                    Binds
+                  </label>
+                  {kind.binds.length > 0 && kind.binds.map((line, bindIndex) => (
+                    <input
+                      key={bindIndex}
+                      type="text"
+                      value={line}
+                      onChange={(e) => {
+                        const newBinds = [...kind.binds];
+                        newBinds[bindIndex] = e.target.value;
+                        handleKindChange(index, "binds", newBinds);
+                      }}
+                    />
+                  ))}
+                  {kind.binds.length > 0 && <button onClick={() => handleKindChange(index, "binds", [...kind.binds, ""])}>Add Bind</button>}
+                  <button onClick={() => handleRemoveKind(index)}>Remove Kind</button>
+                </div>
+              ))}
+            </div>
             <Sidebar />
           </div>
           <div
@@ -219,6 +390,7 @@ const App = () => {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
+              onElementsRemove={onElementsRemove}
               isValidConnection={isValidConnection}
               edgeType="straight"
               fitView
@@ -241,6 +413,7 @@ const App = () => {
                 onChange={handleNodeNameChange}
               />
               <button onClick={handleModalSubmit}>Submit</button>
+              <button onClick={handleModalCancel}>Cancel</button>
             </div>
           </div>
         )}
