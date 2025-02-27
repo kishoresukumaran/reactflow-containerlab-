@@ -141,26 +141,6 @@ button:hover {
   margin-bottom: 15px;
 }
 
-.modal-content .input-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.modal-content .input-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.modal-content .actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
-}
-
 .modal-content button {
   margin: 5px;
   padding: 8px 16px;

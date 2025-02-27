@@ -67,10 +67,6 @@ const App = () => {
   const [showDefault, setShowDefault] = useState(false);
   const [showKindModal, setShowKindModal] = useState(false);
   const [currentKindIndex, setCurrentKindIndex] = useState(0);
-  const [isEdgeModalOpen, setIsEdgeModalOpen] = useState(false);
-  const [newEdgeData, setNewEdgeData] = useState(null);
-  const [sourceInterface, setSourceInterface] = useState("");
-  const [targetInterface, setTargetInterface] = useState("");
 
   useEffect(() => {
     const handleEsc = (event) => {
@@ -88,18 +84,14 @@ const App = () => {
   }, []);
 
   // Allow connections between any nodes
-  const onConnect = useCallback((params) => {
-    // Find source and target node names
-    const sourceNode = nodes.find(node => node.id === params.source);
-    const targetNode = nodes.find(node => node.id === params.target);
-    
-    setNewEdgeData({
-      ...params,
-      sourceNodeName: sourceNode.data.label,
-      targetNodeName: targetNode.data.label
-    });
-    setIsEdgeModalOpen(true);
-  }, [nodes]);
+  const onConnect = useCallback(
+    (params) => {
+      const updatedEdges = addEdge(params, edges);
+      setEdges(updatedEdges);
+      updateYaml(nodes, updatedEdges);
+    },
+    [edges, nodes]
+  );
 
   // Handle drag-and-drop for adding new nodes
   const onDrop = useCallback(
@@ -173,10 +165,8 @@ const App = () => {
           return acc;
         }, {}),
         links: updatedEdges.map((edge) => ({
-          endpoints: [
-            `${edge.sourceNodeName}:${edge.data.sourceInterface}`,
-            `${edge.targetNodeName}:${edge.data.targetInterface}`
-          ]
+          source: edge.source,
+          target: edge.target,
         })),
       },
     };
@@ -420,27 +410,6 @@ const App = () => {
     
     // Reset YAML
     setYamlOutput(yaml.dump(DEFAULT_YAML));
-  };
-
-  // Add edge modal submit handler
-  const handleEdgeModalSubmit = () => {
-    const newEdge = {
-      ...newEdgeData,
-      id: `edge_${newEdgeData.source}_${newEdgeData.target}`,
-      data: {
-        sourceInterface,
-        targetInterface
-      }
-    };
-    
-    setEdges((eds) => addEdge(newEdge, eds));
-    updateYaml(nodes, [...edges, newEdge]);
-    
-    // Reset modal state
-    setIsEdgeModalOpen(false);
-    setSourceInterface("");
-    setTargetInterface("");
-    setNewEdgeData(null);
   };
 
   return (
@@ -765,40 +734,6 @@ const App = () => {
               <button onClick={handleRemoveEdge}>Remove Link</button>
             )}
             <button onClick={handleContextMenuClose}>Cancel</button>
-          </div>
-        )}
-        {isEdgeModalOpen && (
-          <div className="modal">
-            <div className="modal-content">
-              <h2>Configure Link Interfaces</h2>
-              <div className="input-group">
-                <label>{newEdgeData.sourceNodeName} Interface:</label>
-                <input
-                  type="text"
-                  value={sourceInterface}
-                  onChange={(e) => setSourceInterface(e.target.value)}
-                  placeholder="e.g., eth1"
-                />
-              </div>
-              <div className="input-group">
-                <label>{newEdgeData.targetNodeName} Interface:</label>
-                <input
-                  type="text"
-                  value={targetInterface}
-                  onChange={(e) => setTargetInterface(e.target.value)}
-                  placeholder="e.g., eth1"
-                />
-              </div>
-              <div className="actions">
-                <button onClick={handleEdgeModalSubmit}>Submit</button>
-                <button onClick={() => {
-                  setIsEdgeModalOpen(false);
-                  setSourceInterface("");
-                  setTargetInterface("");
-                  setNewEdgeData(null);
-                }}>Cancel</button>
-              </div>
-            </div>
           </div>
         )}
       </div>
