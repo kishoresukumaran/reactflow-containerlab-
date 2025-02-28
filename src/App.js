@@ -118,6 +118,20 @@ const App = () => {
     };
   }, []);
 
+  // Add useEffect for management section updates
+  useEffect(() => {
+    if (showMgmt) {
+      updateYaml(nodes, edges);
+    }
+  }, [mgmtNetwork, ipv4Subnet, ipv6Subnet]);
+
+  // Add useEffect for default kind updates
+  useEffect(() => {
+    if (showDefault && defaultKind) {
+      updateYaml(nodes, edges);
+    }
+  }, [defaultKind]);
+
   // Update onConnect handler to handle multiple edges
   const onConnect = useCallback((params) => {
     const sourceNode = nodes.find(node => node.id === params.source);
@@ -254,26 +268,47 @@ const App = () => {
     setYamlOutput(yaml.dump(yamlData));
   };
 
-  // Handle topology name change
+  // Update handleTopologyNameChange function
   const handleTopologyNameChange = (event) => {
-    setTopologyName(event.target.value);
-    updateYaml(nodes, edges);
+    const newTopologyName = event.target.value;
+    setTopologyName(newTopologyName);
+    
+    // Create new YAML data with updated topology name
+    const yamlData = {
+      name: newTopologyName,
+      topology: {
+        nodes: nodes.reduce((acc, node) => {
+          // ...existing node reduction code...
+          return acc;
+        }, {}),
+        // ...existing topology sections...
+        links: edges.map((edge) => ({
+          endpoints: [
+            `${nodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
+            `${nodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
+          ]
+        }))
+      }
+    };
+
+    // Update YAML output immediately with new topology name
+    setYamlOutput(yaml.dump(yamlData));
   };
 
   // Handle management inputs change
   const handleMgmtNetworkChange = (event) => {
-    setMgmtNetwork(event.target.value);
-    updateYaml(nodes, edges);
+    const newValue = event.target.value;
+    setMgmtNetwork(newValue);
   };
 
   const handleIpv4SubnetChange = (event) => {
-    setIpv4Subnet(event.target.value);
-    updateYaml(nodes, edges);
+    const newValue = event.target.value;
+    setIpv4Subnet(newValue);
   };
 
   const handleIpv6SubnetChange = (event) => {
-    setIpv6Subnet(event.target.value);
-    updateYaml(nodes, edges);
+    const newValue = event.target.value;
+    setIpv6Subnet(newValue);
   };
 
   // Add handler for configure button
@@ -283,8 +318,8 @@ const App = () => {
 
   // Handle default kind change
   const handleDefaultKindChange = (event) => {
-    setDefaultKind(event.target.value);
-    updateYaml(nodes, edges);
+    const newValue = event.target.value;
+    setDefaultKind(newValue);
   };
 
   const handleKindNameChange = (index, value) => {
@@ -549,6 +584,12 @@ const App = () => {
     updateYaml(nodes, edges);
   };
 
+  // Add handler for IPv6 checkbox
+  const handleIpv6Checkbox = (e) => {
+    setShowIpv6(e.target.checked);
+    updateYaml(nodes, edges);
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -576,41 +617,44 @@ const App = () => {
               </label>
             </div>
             {showMgmt && (
-              <>
-                <label htmlFor="mgmt-network">Network:</label>
-                <input
-                  id="mgmt-network"
-                  type="text"
-                  value={mgmtNetwork}
-                  onChange={handleMgmtNetworkChange}
-                />
-                <label htmlFor="ipv4-subnet">IPv4 Subnet:</label>
-                <input
-                  id="ipv4-subnet"
-                  type="text"
-                  value={ipv4Subnet}
-                  onChange={handleIpv4SubnetChange}
-                />
-                <label>
+              <div className="management-section">
+                <div className="input-group">
+                  <label>Network:</label>
                   <input
-                    type="checkbox"
-                    checked={showIpv6}
-                    onChange={(e) => {
-                      setShowIpv6(e.target.checked);
-                      updateYaml(nodes, edges);
-                    }}
-                  />
-                  Add IPv6 Subnet
-                </label>
-                {showIpv6 && (
-                  <input
-                    id="ipv6-subnet"
                     type="text"
-                    value={ipv6Subnet}
-                    onChange={handleIpv6SubnetChange}
+                    value={mgmtNetwork}
+                    onChange={(e) => setMgmtNetwork(e.target.value)}
                   />
+                </div>
+                <div className="input-group">
+                  <label>IPv4 Subnet:</label>
+                  <input
+                    type="text"
+                    value={ipv4Subnet}
+                    onChange={(e) => setIpv4Subnet(e.target.value)}
+                  />
+                </div>
+                <div className="checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showIpv6}
+                      onChange={handleIpv6Checkbox}
+                    />
+                    Add IPv6 Subnet
+                  </label>
+                </div>
+                {showIpv6 && (
+                  <div className="input-group">
+                    <label>IPv6 Subnet:</label>
+                    <input
+                      type="text"
+                      value={ipv6Subnet}
+                      onChange={(e) => setIpv6Subnet(e.target.value)}
+                    />
+                  </div>
                 )}
-              </>
+              </div>
             )}
             <div className="checkbox-group">
               <label>
@@ -654,15 +698,13 @@ const App = () => {
             </div>
             {showDefault && (
               <div className="default-input-group">
-                <label htmlFor="default-kind">Default Kind</label>
+                <label htmlFor="default-kind">Default Kind:</label>
                 <input
                   id="default-kind"
                   type="text"
                   value={defaultKind}
-                  onChange={(e) => {
-                    setDefaultKind(e.target.value);
-                    updateYaml(nodes, edges);
-                  }}
+                  onChange={handleDefaultKindChange}
+                  placeholder="e.g., ceos"
                 />
               </div>
             )}
