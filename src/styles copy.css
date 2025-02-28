@@ -24,6 +24,7 @@ h1 {
   background-color: #f9f9f9;
   border-right: 1px solid #ccc;
   overflow-y: auto;
+  min-width: 250px; /* Ensure enough width for labels */
 }
 
 .node-panel div {
@@ -141,6 +142,26 @@ button:hover {
   margin-bottom: 15px;
 }
 
+.modal-content .input-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.modal-content .input-group input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.modal-content .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .modal-content button {
   margin: 5px;
   padding: 8px 16px;
@@ -163,10 +184,44 @@ button:hover {
 
 .custom-node {
   padding: 10px;
-  background-color: #fff;
-  border: 1px solid #ddd;
   border-radius: 5px;
+  background: white;
+  border: 1px solid #ddd;
+  min-width: 150px;
   text-align: center;
+}
+
+.custom-node .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  background: #555;
+  border: 1px solid #fff;
+  border-radius: 50%;
+}
+
+.custom-node .react-flow__handle:hover {
+  background: #999;
+}
+
+/* Position handles at center of each side */
+.custom-node .react-flow__handle-top {
+  top: -3px;
+  left: 50%;
+}
+
+.custom-node .react-flow__handle-bottom {
+  bottom: -3px;
+  left: 50%;
+}
+
+.custom-node .react-flow__handle-left {
+  left: -3px;
+  top: 50%;
+}
+
+.custom-node .react-flow__handle-right {
+  right: -3px;
+  top: 50%;
 }
 
 .kind-section {
@@ -272,6 +327,7 @@ button.add-kind:hover {
 
 .input-group {
   margin-bottom: 15px;
+  margin-left: 0; /* Remove any left margin */
 }
 
 .input-group input {
@@ -354,4 +410,88 @@ button.add-kind:hover {
 
 .reset-button:hover {
   background-color: #c82333;
+}
+
+.network-node {
+  padding: 15px;
+  background: #f8f9fa;
+  border: 2px solid #495057;
+  border-radius: 8px;
+  min-width: 120px;
+  min-height: 80px;
+  position: relative;
+}
+
+.network-node .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  background: #212529;
+  border: 1px solid #868e96;
+  border-radius: 50%;
+  position: absolute;
+}
+
+.network-node .react-flow__handle:hover {
+  background: #495057;
+  transform: scale(1.5);
+  transition: transform 0.2s;
+}
+
+.node-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.node-label {
+  font-size: 12px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 10px;
+  margin: 10px 0;
+  white-space: nowrap; /* Prevent text wrapping */
+}
+
+.checkbox-group input[type="checkbox"] {
+  margin: 0;
+}
+
+.checkbox-group label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+}
+
+.warning-modal .modal-content {
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  max-width: 300px;
+}
+
+.warning-modal h3 {
+  color: #856404;
+  margin-top: 0;
+}
+
+.warning-modal button {
+  background-color: #ffc107;
+  color: #000;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.warning-modal button:hover {
+  background-color: #e0a800;
 }

@@ -1,14 +1,24 @@
 import React from 'react';
-import { Handle } from 'react-flow-renderer';
+import { Handle, Position } from 'react-flow-renderer';
 
 const CustomNode = ({ data }) => {
   return (
-    <div className="custom-node">
-      <div>{data.label}</div>
-      <Handle type="target" position="top" />
-      <Handle type="source" position="bottom" />
-      <Handle type="target" position="left" />
-      <Handle type="source" position="right" />
+    <div className="network-node">
+      {data.ports.map((port) => (
+        <Handle
+          key={port.id}
+          id={port.id}
+          type="source"
+          position={port.position}
+          style={{
+            [port.position === Position.TOP || port.position === Position.BOTTOM ? 'left' : 'top']: 
+            port.position === Position.TOP || port.position === Position.BOTTOM ? port.offsetX : port.offsetY
+          }}
+        />
+      ))}
+      <div className="node-content">
+        <div className="node-label">{data.label}</div>
+      </div>
     </div>
   );
 };

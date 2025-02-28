@@ -8,18 +8,45 @@ import ReactFlow, {
   applyEdgeChanges,
 } from "react-flow-renderer";
 import Sidebar from "./Sidebar";
-import CustomNode from "./CustomNode";
 import yaml from "js-yaml";
 import { saveAs } from "file-saver";
 import * as htmlToImage from 'html-to-image';
 import "./styles.css";
+import ELK from 'elkjs/lib/elk.bundled.js'; // Update elk import
+
+const elk = new ELK();
+
+const layoutOptions = {
+  'elk.algorithm': 'layered',
+  'elk.spacing.nodeNode': 80,
+  'elk.direction': 'RIGHT',
+  'elk.spacing.portPort': 30,
+};
+
+// Add layout function
+const getLayoutedElements = async (nodes, edges) => {
+  const graph = {
+    id: 'root',
+    layoutOptions,
+    children: nodes.map((node) => ({
+      id: node.id,
+      width: 150,
+      height: 100,
+      ports: node.data.ports || []
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      sources: [edge.source],
+      targets: [edge.target]
+    }))
+  };
+
+  const layoutedGraph = await elk.layout(graph);
+  return layoutedGraph;
+};
 
 let id = 0;
 const getId = () => `node_${id++}`;
-
-const nodeTypes = {
-  customNode: CustomNode,
-};
 
 // Add default YAML constant
 const DEFAULT_YAML = {
@@ -71,6 +98,10 @@ const App = () => {
   const [newEdgeData, setNewEdgeData] = useState(null);
   const [sourceInterface, setSourceInterface] = useState("");
   const [targetInterface, setTargetInterface] = useState("");
+  const [showWarning, setShowWarning] = useState(false);
+  const [nodeKind, setNodeKind] = useState("");
+  const [nodeImage, setNodeImage] = useState("");
+  const [nodeModalWarning, setNodeModalWarning] = useState(false);
 
   useEffect(() => {
     const handleEsc = (event) => {
@@ -87,23 +118,38 @@ const App = () => {
     };
   }, []);
 
-  // Allow connections between any nodes
+  // Update onConnect handler to handle multiple edges
   const onConnect = useCallback((params) => {
-    // Find source and target node names
     const sourceNode = nodes.find(node => node.id === params.source);
     const targetNode = nodes.find(node => node.id === params.target);
     
-    setNewEdgeData({
+    const edgeParams = {
       ...params,
+      // Remove type: 'straight' to use default curved edges
       sourceNodeName: sourceNode.data.label,
       targetNodeName: targetNode.data.label
-    });
+    };
+    
+    setNewEdgeData(edgeParams);
     setIsEdgeModalOpen(true);
-  }, [nodes]);
+  }, [nodes, edges]);
 
-  // Handle drag-and-drop for adding new nodes
+  // Add validation function
+  const validateTopologyName = () => {
+    if (!topologyName.trim()) {
+      setShowWarning(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Update onDrop callback
   const onDrop = useCallback(
     (event) => {
+      if (!validateTopologyName()) {
+        event.preventDefault();
+        return;
+      }
       event.preventDefault();
 
       const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
@@ -118,15 +164,14 @@ const App = () => {
 
       const newNode = {
         id: getId(),
-        type: 'customNode',
         position,
-        data: { label: `${type} node` },
+        data: { label: `${type} node` }
       };
 
       setNewNode(newNode);
       setIsModalOpen(true);
     },
-    [nodes, edges]
+    [nodes, edges, topologyName]
   );
 
   // Allow dragging over the canvas
@@ -149,49 +194,60 @@ const App = () => {
     [nodes, edges]
   );
 
-  // Update YAML dynamically
+  // Update updateYaml function to include defaults section
   const updateYaml = (updatedNodes, updatedEdges) => {
     const yamlData = {
       name: topologyName,
       topology: {
-        kinds: kinds.reduce((acc, kind) => {
-          if (kind.name) {
-            acc[kind.name] = {
-              ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
-              ...(kind.config.showImage && { image: kind.config.image }),
-              ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
-              ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
-            };
+        nodes: updatedNodes.reduce((acc, node) => {
+          const nodeConfig = {};
+          if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
+          if (node.data.image?.trim()) nodeConfig.image = node.data.image;
+          if (node.data.binds?.some(bind => bind.trim())) {
+            nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
+          }
+          if (node.data.mgmtIp?.trim()) nodeConfig["mgmt-ipv4"] = node.data.mgmtIp;
+          
+          if (Object.keys(nodeConfig).length > 0) {
+            acc[node.data.label] = nodeConfig;
           }
           return acc;
         }, {}),
-        nodes: updatedNodes.reduce((acc, node) => {
-          acc[node.data.label] = {
-            binds: node.data.binds,
-            "mgmt-ipv4": node.data.mgmtIp,
-          };
-          return acc;
-        }, {}),
+        // Add defaults section
+        ...(showDefault && defaultKind && {
+          defaults: {
+            kind: defaultKind
+          }
+        }),
+        // Rest of the topology sections
+        ...(showKind && kinds.length > 0 && {
+          kinds: kinds.reduce((acc, kind) => {
+            if (kind.name) {
+              acc[kind.name] = {
+                ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
+                ...(kind.config.showImage && { image: kind.config.image }),
+                ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
+                ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
+              };
+            }
+            return acc;
+          }, {})
+        }),
         links: updatedEdges.map((edge) => ({
           endpoints: [
-            `${edge.sourceNodeName}:${edge.data.sourceInterface}`,
-            `${edge.targetNodeName}:${edge.data.targetInterface}`
+            `${nodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
+            `${nodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
           ]
-        })),
-      },
+        }))
+      }
     };
 
-    if (showDefault) {
-      yamlData.topology.defaults = {
-        kind: defaultKind
-      };
-    }
-
+    // Add management section if enabled
     if (showMgmt) {
       yamlData.mgmt = {
         network: mgmtNetwork,
         "ipv4-subnet": ipv4Subnet,
-        ...(showIpv6 && { "ipv6-subnet": ipv6Subnet }),
+        ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
       };
     }
 
@@ -295,19 +351,43 @@ const App = () => {
     setNodeMgmtIp(event.target.value);
   };
 
+  // Add handlers
+  const handleNodeKindChange = (event) => {
+    setNodeKind(event.target.value);
+  };
+
+  const handleNodeImageChange = (event) => {
+    setNodeImage(event.target.value);
+  };
+
   // Handle modal submit
   const handleModalSubmit = () => {
-    if (newNode) {
-      newNode.data.label = nodeName;
-      newNode.data.binds = nodeBinds.filter(bind => bind);
-      newNode.data.mgmtIp = nodeMgmtIp;
-      setNodes((nds) => nds.concat(newNode));
-      updateYaml([...nodes, newNode], edges);
-      setIsModalOpen(false);
-      setNodeName("");
-      setNodeBinds([""]);
-      setNodeMgmtIp("");
+    if (!nodeName.trim() || !nodeKind.trim()) {
+      setNodeModalWarning(true);
+      return;
     }
+
+    const newNodeWithData = {
+      ...newNode,
+      data: {
+        ...newNode.data,
+        label: nodeName,
+        kind: nodeKind,
+        image: nodeImage,
+        binds: nodeBinds,
+        mgmtIp: nodeMgmtIp,
+      },
+    };
+
+    setNodes((nds) => [...nds, newNodeWithData]);
+    updateYaml([...nodes, newNodeWithData], edges);
+    setIsModalOpen(false);
+    setNodeName("");
+    setNodeKind("");
+    setNodeImage("");
+    setNodeBinds([""]);
+    setNodeMgmtIp("");
+    setNodeModalWarning(false);
   };
 
   // Handle modal cancel
@@ -443,6 +523,32 @@ const App = () => {
     setNewEdgeData(null);
   };
 
+  // Update checkbox handlers
+  const handleCheckboxChange = (setter, checked) => {
+    if (!validateTopologyName()) {
+      return;
+    }
+    setter(checked);
+    updateYaml(nodes, edges);
+  };
+
+  // Update checkbox handlers
+  const handleKindCheckbox = (e) => {
+    if (!validateTopologyName()) {
+      return;
+    }
+    setShowKind(e.target.checked);
+    updateYaml(nodes, edges);
+  };
+
+  const handleDefaultCheckbox = (e) => {
+    if (!validateTopologyName()) {
+      return;
+    }
+    setShowDefault(e.target.checked);
+    updateYaml(nodes, edges);
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -459,116 +565,107 @@ const App = () => {
                 onChange={handleTopologyNameChange}
               />
             </div>
-            <div>
+            <div className="checkbox-group">
               <label>
                 <input
                   type="checkbox"
                   checked={showMgmt}
-                  onChange={(e) => {
-                    setShowMgmt(e.target.checked);
-                    updateYaml(nodes, edges);
-                  }}
+                  onChange={(e) => handleCheckboxChange(setShowMgmt, e.target.checked)}
                 />
-                Add Management
+                Add Management Section
               </label>
-              {showMgmt && (
-                <>
-                  <label htmlFor="mgmt-network">Network:</label>
-                  <input
-                    id="mgmt-network"
-                    type="text"
-                    value={mgmtNetwork}
-                    onChange={handleMgmtNetworkChange}
-                  />
-                  <label htmlFor="ipv4-subnet">IPv4 Subnet:</label>
-                  <input
-                    id="ipv4-subnet"
-                    type="text"
-                    value={ipv4Subnet}
-                    onChange={handleIpv4SubnetChange}
-                  />
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={showIpv6}
-                      onChange={(e) => {
-                        setShowIpv6(e.target.checked);
-                        updateYaml(nodes, edges);
-                      }}
-                    />
-                    Add IPv6 Subnet
-                  </label>
-                  {showIpv6 && (
-                    <input
-                      id="ipv6-subnet"
-                      type="text"
-                      value={ipv6Subnet}
-                      onChange={handleIpv6SubnetChange}
-                    />
-                  )}
-                </>
-              )}
             </div>
-            <div>
+            {showMgmt && (
+              <>
+                <label htmlFor="mgmt-network">Network:</label>
+                <input
+                  id="mgmt-network"
+                  type="text"
+                  value={mgmtNetwork}
+                  onChange={handleMgmtNetworkChange}
+                />
+                <label htmlFor="ipv4-subnet">IPv4 Subnet:</label>
+                <input
+                  id="ipv4-subnet"
+                  type="text"
+                  value={ipv4Subnet}
+                  onChange={handleIpv4SubnetChange}
+                />
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={showIpv6}
+                    onChange={(e) => {
+                      setShowIpv6(e.target.checked);
+                      updateYaml(nodes, edges);
+                    }}
+                  />
+                  Add IPv6 Subnet
+                </label>
+                {showIpv6 && (
+                  <input
+                    id="ipv6-subnet"
+                    type="text"
+                    value={ipv6Subnet}
+                    onChange={handleIpv6SubnetChange}
+                  />
+                )}
+              </>
+            )}
+            <div className="checkbox-group">
               <label>
                 <input
                   type="checkbox"
                   checked={showKind}
-                  onChange={(e) => {
-                    setShowKind(e.target.checked);
-                    updateYaml(nodes, edges);
-                  }}
+                  onChange={handleKindCheckbox}
                 />
                 Add Kinds
               </label>
-              {showKind && (
-                <div className="kinds-section">
-                  {kinds.map((kind, index) => (
-                    <div key={index} className="kind-input-group">
-                      <label htmlFor={`kind-name-${index}`}>Kind Name</label>
-                      <input
-                        id={`kind-name-${index}`}
-                        type="text"
-                        value={kind.name}
-                        onChange={(e) => handleKindNameChange(index, e.target.value)}
-                      />
-                      <button onClick={() => {
-                        setShowKindModal(true);
-                        setCurrentKindIndex(index);
-                      }}>Configure</button>
-                    </div>
-                  ))}
-                  <button onClick={handleAddKind}>Add More Kinds</button>
-                </div>
-              )}
             </div>
-            <div>
+            {showKind && (
+              <div className="kinds-section">
+                {kinds.map((kind, index) => (
+                  <div key={index} className="kind-input-group">
+                    <label htmlFor={`kind-name-${index}`}>Kind Name</label>
+                    <input
+                      id={`kind-name-${index}`}
+                      type="text"
+                      value={kind.name}
+                      onChange={(e) => handleKindNameChange(index, e.target.value)}
+                    />
+                    <button onClick={() => {
+                      setShowKindModal(true);
+                      setCurrentKindIndex(index);
+                    }}>Configure</button>
+                  </div>
+                ))}
+                <button onClick={handleAddKind}>Add More Kinds</button>
+              </div>
+            )}
+            <div className="checkbox-group">
               <label>
                 <input
                   type="checkbox"
                   checked={showDefault}
-                  onChange={(e) => {
-                    setShowDefault(e.target.checked);
-                    updateYaml(nodes, edges);
-                  }}
+                  onChange={handleDefaultCheckbox}
                 />
                 Add Default
               </label>
-              {showDefault && (
-                <div className="default-input-group">
-                  <label htmlFor="default-kind">Default Kind</label>
-                  <input
-                    id="default-kind"
-                    type="text"
-                    value={defaultKind}
-                    onChange={(e) => {
-                      setDefaultKind(e.target.value);
-                      updateYaml(nodes, edges);
-                    }}
-                  />
-                </div>
-              )}
             </div>
+            {showDefault && (
+              <div className="default-input-group">
+                <label htmlFor="default-kind">Default Kind</label>
+                <input
+                  id="default-kind"
+                  type="text"
+                  value={defaultKind}
+                  onChange={(e) => {
+                    setDefaultKind(e.target.value);
+                    updateYaml(nodes, edges);
+                  }}
+                />
+              </div>
+            )}
             <button className="reset-button" onClick={handleReset}>
               Reset All Fields
             </button>
@@ -587,9 +684,7 @@ const App = () => {
               onConnect={onConnect}
               onElementsRemove={onElementsRemove}
               isValidConnection={isValidConnection}
-              edgeType="straight"
               fitView
-              nodeTypes={nodeTypes}
               onNodeContextMenu={onNodeContextMenu}
               onEdgeContextMenu={onEdgeContextMenu}
             />
@@ -604,12 +699,38 @@ const App = () => {
           <div className="modal">
             <div className="modal-content">
               <h2>Enter Node Details</h2>
+              {nodeModalWarning && (
+                <div className="warning-message">
+                  Node Name and Kind are required fields
+                </div>
+              )}
               <div className="input-group">
-                <label>Name of the node:</label>
+                <label>Name of the node: *</label>
                 <input
                   type="text"
                   value={nodeName}
+                  placeholder="e.g., spine1"
                   onChange={handleNodeNameChange}
+                  className={nodeModalWarning && !nodeName.trim() ? 'input-error' : ''}
+                />
+              </div>
+              <div className="input-group">
+                <label>Kind: *</label>
+                <input
+                  type="text"
+                  value={nodeKind}
+                  placeholder="e.g., ceos"
+                  onChange={handleNodeKindChange}
+                  className={nodeModalWarning && !nodeKind.trim() ? 'input-error' : ''}
+                />
+              </div>
+              <div className="input-group">
+                <label>Image:</label>
+                <input
+                  type="text"
+                  value={nodeImage}
+                  onChange={handleNodeImageChange}
+                  placeholder="e.g., ceos:4.31.4M"
                 />
               </div>
               <div className="input-group">
@@ -798,6 +919,15 @@ const App = () => {
                   setNewEdgeData(null);
                 }}>Cancel</button>
               </div>
+            </div>
+          </div>
+        )}
+        {showWarning && (
+          <div className="modal warning-modal">
+            <div className="modal-content">
+              <h3>Warning</h3>
+              <p>Please enter the topology name first</p>
+              <button onClick={() => setShowWarning(false)}>OK</button>
             </div>
           </div>
         )}

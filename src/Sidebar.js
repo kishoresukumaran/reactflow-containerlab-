@@ -2,7 +2,7 @@ import React from 'react';
 
 const Sidebar = () => {
   const onDragStart = (event, nodeType) => {
-    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.setData('application/reactflow', 'default');  // Changed to 'default'
     event.dataTransfer.effectAllowed = 'move';
   };
 
