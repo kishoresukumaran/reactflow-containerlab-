@@ -10,7 +10,6 @@ import ReactFlow, {
 import Sidebar from "./Sidebar";
 import yaml from "js-yaml";
 import { saveAs } from "file-saver";
-import * as htmlToImage from 'html-to-image';
 import "./styles.css";
 import ELK from 'elkjs/lib/elk.bundled.js'; // Update elk import
 
@@ -102,6 +101,9 @@ const App = () => {
   const [nodeKind, setNodeKind] = useState("");
   const [nodeImage, setNodeImage] = useState("");
   const [nodeModalWarning, setNodeModalWarning] = useState(false);
+  const [isModifying, setIsModifying] = useState(false);
+  const [isModifyingEdge, setIsModifyingEdge] = useState(false);
+  const [edgeModalWarning, setEdgeModalWarning] = useState(false);
 
   useEffect(() => {
     const handleEsc = (event) => {
@@ -131,6 +133,13 @@ const App = () => {
       updateYaml(nodes, edges);
     }
   }, [defaultKind]);
+
+  // Add useEffect for kinds state changes
+  useEffect(() => {
+    if (showKind) {
+      updateYaml(nodes, edges);
+    }
+  }, [showKind, kinds]);
 
   // Update onConnect handler to handle multiple edges
   const onConnect = useCallback((params) => {
@@ -249,8 +258,8 @@ const App = () => {
         }),
         links: updatedEdges.map((edge) => ({
           endpoints: [
-            `${nodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
-            `${nodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
+            `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
+            `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
           ]
         }))
       }
@@ -337,8 +346,8 @@ const App = () => {
   };
 
   const handleAddKind = () => {
-    setKinds([...kinds, {
-      name: '',
+    const newKind = {
+      name: kindName,
       config: {
         showStartupConfig: false,
         startupConfig: '',
@@ -349,7 +358,10 @@ const App = () => {
         showBinds: false,
         binds: ['']
       }
-    }]);
+    };
+    setKinds([...kinds, newKind]);
+    setKindName('');
+    updateYaml(nodes, edges);
   };
 
   const handleAddExec = () => {
@@ -414,7 +426,17 @@ const App = () => {
       },
     };
 
-    setNodes((nds) => [...nds, newNodeWithData]);
+    if (isModifying) {
+      setNodes((nds) => 
+        nds.map((node) => 
+          node.id === newNode.id ? newNodeWithData : node
+        )
+      );
+      setIsModifying(false);
+    } else {
+      setNodes((nds) => [...nds, newNodeWithData]);
+    }
+
     updateYaml([...nodes, newNodeWithData], edges);
     setIsModalOpen(false);
     setNodeName("");
@@ -440,20 +462,6 @@ const App = () => {
   const handleDownloadYaml = () => {
     const blob = new Blob([yamlOutput], { type: "text/yaml;charset=utf-8" });
     saveAs(blob, `${topologyName}.yml`);
-  };
-
-  // Handle download PNG button click
-  const handleDownloadPng = () => {
-    htmlToImage.toPng(reactFlowWrapper.current)
-      .then((dataUrl) => {
-        const link = document.createElement('a');
-        link.download = `${topologyName}.png`;
-        link.href = dataUrl;
-        link.click();
-      })
-      .catch((error) => {
-        console.error('Error generating PNG:', error);
-      });
   };
 
   // Handle right-click on node to show context menu
@@ -537,25 +545,44 @@ const App = () => {
     setYamlOutput(yaml.dump(DEFAULT_YAML));
   };
 
-  // Add edge modal submit handler
+  // Update handleEdgeModalSubmit function
   const handleEdgeModalSubmit = () => {
+    if (!sourceInterface.trim() || !targetInterface.trim()) {
+      setEdgeModalWarning(true);
+      return;
+    }
+
     const newEdge = {
       ...newEdgeData,
-      id: `edge_${newEdgeData.source}_${newEdgeData.target}`,
+      id: isModifyingEdge ? newEdgeData.id : `edge_${newEdgeData.source}_${newEdgeData.target}`,
       data: {
         sourceInterface,
         targetInterface
       }
     };
-    
-    setEdges((eds) => addEdge(newEdge, eds));
-    updateYaml(nodes, [...edges, newEdge]);
-    
-    // Reset modal state
+
+    if (isModifyingEdge) {
+      setEdges((eds) => {
+        const updatedEdges = eds.map((edge) => 
+          edge.id === newEdge.id ? newEdge : edge
+        );
+        updateYaml(nodes, updatedEdges);
+        return updatedEdges;
+      });
+      setIsModifyingEdge(false);
+    } else {
+      setEdges((eds) => {
+        const updatedEdges = addEdge(newEdge, eds);
+        updateYaml(nodes, updatedEdges);
+        return updatedEdges;
+      });
+    }
+
     setIsEdgeModalOpen(false);
     setSourceInterface("");
     setTargetInterface("");
     setNewEdgeData(null);
+    setEdgeModalWarning(false);
   };
 
   // Update checkbox handlers
@@ -567,13 +594,21 @@ const App = () => {
     updateYaml(nodes, edges);
   };
 
+  // Add handleMgmtCheckbox function
+  const handleMgmtCheckbox = (e) => {
+    if (!validateTopologyName()) {
+      return;
+    }
+    setShowMgmt(e.target.checked);
+    updateYaml(nodes, edges);
+  };
+
   // Update checkbox handlers
   const handleKindCheckbox = (e) => {
     if (!validateTopologyName()) {
       return;
     }
     setShowKind(e.target.checked);
-    updateYaml(nodes, edges);
   };
 
   const handleDefaultCheckbox = (e) => {
@@ -590,32 +625,64 @@ const App = () => {
     updateYaml(nodes, edges);
   };
 
+  // Add handler for modify action
+  const handleModifyNode = () => {
+    const nodeToModify = contextMenu.element;
+    setNodeName(nodeToModify.data.label);
+    setNodeKind(nodeToModify.data.kind || "");
+    setNodeImage(nodeToModify.data.image || "");
+    setNodeBinds(nodeToModify.data.binds || [""]);
+    setNodeMgmtIp(nodeToModify.data.mgmtIp || "");
+    setNewNode(nodeToModify);
+    setIsModifying(true);
+    setIsModalOpen(true);
+    setContextMenu(null);
+  };
+
+  // Add handler for modify edge
+  const handleModifyEdge = () => {
+    const edgeToModify = contextMenu.element;
+    setSourceInterface(edgeToModify.data.sourceInterface || "");
+    setTargetInterface(edgeToModify.data.targetInterface || "");
+    setNewEdgeData({
+      ...edgeToModify,
+      sourceNodeName: nodes.find(n => n.id === edgeToModify.source).data.label,
+      targetNodeName: nodes.find(n => n.id === edgeToModify.target).data.label
+    });
+    setIsEdgeModalOpen(true);
+    setIsModifyingEdge(true);
+    setContextMenu(null);
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
-        <h1>Container Lab Designer</h1>
+        <h1>Container Lab Topology Designer</h1>
         <div className="dndflow">
           <div className="node-panel">
             <Sidebar />
-            <div>
-              <label htmlFor="topology-name">Name of the topology:</label>
+            <div className="input-group">
+              <label>Name of the topology:</label>
               <input
-                id="topology-name"
                 type="text"
                 value={topologyName}
                 onChange={handleTopologyNameChange}
               />
             </div>
+
+            <h3 className="settings-heading">Global Settings</h3>
+
             <div className="checkbox-group">
               <label>
                 <input
                   type="checkbox"
                   checked={showMgmt}
-                  onChange={(e) => handleCheckboxChange(setShowMgmt, e.target.checked)}
+                  onChange={handleMgmtCheckbox}
                 />
-                Add Management Section
+                Add Management
               </label>
             </div>
+
             {showMgmt && (
               <div className="management-section">
                 <div className="input-group">
@@ -639,7 +706,7 @@ const App = () => {
                     <input
                       type="checkbox"
                       checked={showIpv6}
-                      onChange={handleIpv6Checkbox}
+                      onChange={(e) => setShowIpv6(e.target.checked)}
                     />
                     Add IPv6 Subnet
                   </label>
@@ -730,7 +797,6 @@ const App = () => {
               onNodeContextMenu={onNodeContextMenu}
               onEdgeContextMenu={onEdgeContextMenu}
             />
-            <button className="download-button" onClick={handleDownloadPng}>Download Topology as PNG</button>
           </div>
           <div className="yaml-output">
             <textarea value={yamlOutput} readOnly />
@@ -922,25 +988,37 @@ const App = () => {
             }}
           >
             {contextMenu.type === 'node' && (
-              <button onClick={handleRemoveNode}>Remove Node</button>
+              <>
+                <button onClick={handleModifyNode}>Modify</button>
+                <button onClick={handleRemoveNode}>Remove Node</button>
+                <button onClick={handleContextMenuClose}>Cancel</button>
+              </>
             )}
             {contextMenu.type === 'edge' && (
-              <button onClick={handleRemoveEdge}>Remove Link</button>
+              <>
+                <button onClick={handleModifyEdge}>Modify</button>
+                <button onClick={handleRemoveEdge}>Remove Edge</button>
+                <button onClick={handleContextMenuClose}>Cancel</button>
+              </>
             )}
-            <button onClick={handleContextMenuClose}>Cancel</button>
           </div>
         )}
         {isEdgeModalOpen && (
           <div className="modal">
             <div className="modal-content">
               <h2>Configure Link Interfaces</h2>
+              {edgeModalWarning && (
+                <div className="warning-message">
+                  Please enter both source and target interface details
+                </div>
+              )}
               <div className="input-group">
                 <label>{newEdgeData.sourceNodeName} Interface:</label>
                 <input
                   type="text"
                   value={sourceInterface}
                   onChange={(e) => setSourceInterface(e.target.value)}
-                  placeholder="e.g., eth1"
+                  className={edgeModalWarning && !sourceInterface.trim() ? 'input-error' : ''}
                 />
               </div>
               <div className="input-group">
@@ -949,7 +1027,7 @@ const App = () => {
                   type="text"
                   value={targetInterface}
                   onChange={(e) => setTargetInterface(e.target.value)}
-                  placeholder="e.g., eth1"
+                  className={edgeModalWarning && !targetInterface.trim() ? 'input-error' : ''}
                 />
               </div>
               <div className="actions">
@@ -959,6 +1037,7 @@ const App = () => {
                   setSourceInterface("");
                   setTargetInterface("");
                   setNewEdgeData(null);
+                  setEdgeModalWarning(false);
                 }}>Cancel</button>
               </div>
             </div>

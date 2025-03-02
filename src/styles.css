@@ -11,6 +11,10 @@ body {
 
 h1 {
   text-align: center;
+  background-color: #072452;
+  color: white;
+  margin: 0;
+  padding: 15px 0;
 }
 
 .dndflow {
@@ -51,11 +55,17 @@ h1 {
 }
 
 .reactflow-wrapper {
-  width: 60%;
+  flex-grow: 1;
   height: 100%;
-  background-color: #e0e0e0;
-  overflow: hidden;
-  position: relative;
+  background-color: #ffffff;
+  background-image: 
+    linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+    linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.react-flow__renderer {
+  background: transparent;
 }
 
 .yaml-output {
@@ -134,7 +144,6 @@ button:hover {
 }
 
 .modal-content input {
-  width: 100%;
   padding: 8px;
   margin-bottom: 15px;
   border: 1px solid #ccc;
@@ -238,21 +247,27 @@ button:hover {
 .context-menu {
   position: absolute;
   background-color: white;
-  box-shadow: 0px 0px 5px rgba(0, 0, 0, 0.3);
+  box-shadow: 0px 0px 5px rgba(0,0,0,0.3);
+  border-radius: 4px;
+  padding: 5px 0;
   z-index: 1000;
 }
 
 .context-menu button {
   display: block;
   width: 100%;
-  padding: 10px;
+  padding: 8px 16px;
   border: none;
   background: none;
+  text-align: left;
   cursor: pointer;
+  color: #333;
+  font-size: 14px;
 }
 
 .context-menu button:hover {
-  background-color: #f0f0f0;
+  background-color: #072452;
+  color: white;
 }
 
 .kind-input-group,
@@ -271,19 +286,27 @@ button:hover {
 
 .kind-config-item {
   margin: 15px 0;
-  padding: 10px;
-  border: 1px solid #eee;
-  border-radius: 5px;
+  padding: 0;
 }
 
 .kind-config-item label {
-  display: block;
-  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0 0 10px 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.kind-config-item input[type="checkbox"] {
+  margin: 0;
 }
 
 .kind-config-item input[type="text"] {
   width: 100%;
-  padding: 5px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   margin-top: 5px;
 }
 
@@ -467,11 +490,11 @@ button.add-kind:hover {
 }
 
 .checkbox-group label {
-  margin: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  cursor: pointer;
 }
 
 .warning-modal .modal-content {
@@ -497,4 +520,171 @@ button.add-kind:hover {
 
 .warning-modal button:hover {
   background-color: #e0a800;
+}
+
+.modal-content button,
+.yaml-output button,
+.download-button,
+button.add-kind {
+  background-color: #072452;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.modal-content button:hover,
+.yaml-output button:hover,
+.download-button:hover,
+button.add-kind:hover {
+  background-color: #0a3270;
+}
+
+/* Keep reset button styling */
+.reset-button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 20px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover {
+  background-color: #c82333;
+}
+
+/* Configure and Add more kinds buttons */
+.kind-config-item button,
+button.configure-kind {
+  background-color: #072452;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin: 5px;
+}
+
+.kind-config-item button:hover,
+button.configure-kind:hover {
+  background-color: #0a3270;
+}
+
+/* Kind configuration buttons */
+.kind-input-group button,
+.kinds-section button {
+  background-color: #072452;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 5px;
+  transition: background-color 0.2s;
+}
+
+.kind-input-group button:hover,
+.kinds-section button:hover {
+  background-color: #0a3270;
+}
+
+/* Add specific style for Configure button */
+button[onClick*="handleConfigureKind"],
+button[onClick*="handleAddKind"] {
+  background-color: #072452;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 5px;
+  transition: background-color 0.2s;
+}
+
+.warning-message {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.input-error {
+  border-color: #dc3545 !important;
+}
+
+.settings-heading {
+  margin: 20px 0 15px 0;
+  color: #072452;
+  font-size: 16px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 8px;
+}
+
+.kind-modal {
+  max-width: 500px;
+  padding: 20px;
+}
+
+.kind-config-item {
+  margin-bottom: 20px;
+}
+
+.kind-config-item label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 0;
+  font-weight: normal;
+}
+
+.kind-config-item input[type="checkbox"] {
+  margin: 0;
+}
+
+.kind-config-item input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+.exec-commands,
+.binds {
+  margin-top: 10px;
+  margin-left: 20px;
+}
+
+.exec-commands input,
+.binds input {
+  margin-bottom: 8px;
+  width: calc(100% - 20px);
+}
+
+.kind-modal button {
+  background-color: #072452;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 15px;
+  float: right;
+}
+
+.kind-modal button:hover {
+  background-color: #0a3270;
 }
