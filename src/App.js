@@ -141,6 +141,11 @@ const App = () => {
     }
   }, [showKind, kinds]);
 
+  // Add useEffects to watch checkbox states
+  useEffect(() => {
+    updateYaml(nodes, edges);
+  }, [showMgmt, showKind, showDefault]);
+
   // Update onConnect handler to handle multiple edges
   const onConnect = useCallback((params) => {
     const sourceNode = nodes.find(node => node.id === params.source);
@@ -373,7 +378,7 @@ const App = () => {
   };
 
   const handleAddBind = () => {
-    setNodeBinds(prevBinds => [...prevBinds, ""]);
+    setNodeBinds([...nodeBinds, ""]);
   };
 
   // Handle node name change
@@ -600,6 +605,13 @@ const App = () => {
       return;
     }
     setShowMgmt(e.target.checked);
+    // Reset management values when unchecked
+    if (!e.target.checked) {
+      setMgmtNetwork('');
+      setIpv4Subnet('');
+      setIpv6Subnet('');
+      setShowIpv6(false);
+    }
     updateYaml(nodes, edges);
   };
 
@@ -609,6 +621,23 @@ const App = () => {
       return;
     }
     setShowKind(e.target.checked);
+    // Reset kinds when unchecked
+    if (!e.target.checked) {
+      setKinds([{
+        name: '',
+        config: {
+          showStartupConfig: false,
+          startupConfig: '',
+          showImage: false,
+          image: '',
+          showExec: false,
+          exec: [''],
+          showBinds: false,
+          binds: ['']
+        }
+      }]);
+    }
+    updateYaml(nodes, edges);
   };
 
   const handleDefaultCheckbox = (e) => {
@@ -616,6 +645,10 @@ const App = () => {
       return;
     }
     setShowDefault(e.target.checked);
+    // Reset default kind when unchecked
+    if (!e.target.checked) {
+      setDefaultKind('');
+    }
     updateYaml(nodes, edges);
   };
 
@@ -652,6 +685,19 @@ const App = () => {
     setIsEdgeModalOpen(true);
     setIsModifyingEdge(true);
     setContextMenu(null);
+  };
+
+  // Add new handler for kind binds
+  const handleAddKindBind = () => {
+    const newKinds = [...kinds];
+    newKinds[currentKindIndex].config.binds.push('');
+    setKinds(newKinds);
+  };
+
+  // Add handleKindModalDone function
+  const handleKindModalDone = () => {
+    setShowKindModal(false);
+    updateYaml(nodes, edges);
   };
 
   return (
@@ -807,61 +853,66 @@ const App = () => {
           <div className="modal">
             <div className="modal-content">
               <h2>Enter Node Details</h2>
-              {nodeModalWarning && (
-                <div className="warning-message">
-                  Node Name and Kind are required fields
+              <div className="form-content">
+                {nodeModalWarning && (
+                  <div className="warning-message">
+                    Node Name and Kind are required fields
+                  </div>
+                )}
+                <div className="input-group">
+                  <label>Name of the node: *</label>
+                  <input
+                    type="text"
+                    value={nodeName}
+                    placeholder="e.g., spine1"
+                    onChange={handleNodeNameChange}
+                    className={nodeModalWarning && !nodeName.trim() ? 'input-error' : ''}
+                  />
                 </div>
-              )}
-              <div className="input-group">
-                <label>Name of the node: *</label>
-                <input
-                  type="text"
-                  value={nodeName}
-                  placeholder="e.g., spine1"
-                  onChange={handleNodeNameChange}
-                  className={nodeModalWarning && !nodeName.trim() ? 'input-error' : ''}
-                />
-              </div>
-              <div className="input-group">
-                <label>Kind: *</label>
-                <input
-                  type="text"
-                  value={nodeKind}
-                  placeholder="e.g., ceos"
-                  onChange={handleNodeKindChange}
-                  className={nodeModalWarning && !nodeKind.trim() ? 'input-error' : ''}
-                />
-              </div>
-              <div className="input-group">
-                <label>Image:</label>
-                <input
-                  type="text"
-                  value={nodeImage}
-                  onChange={handleNodeImageChange}
-                  placeholder="e.g., ceos:4.31.4M"
-                />
-              </div>
-              <div className="input-group">
-                <label>Binds:</label>
-                {nodeBinds.map((bind, index) => (
-                  <div key={index} className="bind-input">
+                <div className="input-group">
+                  <label>Kind: *</label>
+                  <input
+                    type="text"
+                    value={nodeKind}
+                    placeholder="e.g., ceos"
+                    onChange={handleNodeKindChange}
+                    className={nodeModalWarning && !nodeKind.trim() ? 'input-error' : ''}
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Image:</label>
+                  <input
+                    type="text"
+                    value={nodeImage}
+                    onChange={handleNodeImageChange}
+                    placeholder="e.g., ceos:4.31.4M"
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Binds:</label>
+                  {nodeBinds.map((bind, index) => (
                     <input
+                      key={index}
                       type="text"
                       value={bind}
-                      onChange={(e) => handleNodeBindsChange(index, e)}
-                      placeholder={`Bind path ${index + 1}`}
+                      onChange={(e) => {
+                        const newBinds = [...nodeBinds];
+                        newBinds[index] = e.target.value;
+                        setNodeBinds(newBinds);
+                      }}
+                      placeholder="Enter bind path"
                     />
-                  </div>
-                ))}
-                <button type="button" onClick={handleAddBind}>Add Bind</button>
-              </div>
-              <div className="input-group">
-                <label>Management IP:</label>
-                <input
-                  type="text"
-                  value={nodeMgmtIp}
-                  onChange={handleNodeMgmtIpChange}
-                />
+                  ))}
+                  <button type="button" onClick={handleAddBind}>Add Bind</button>
+                </div>
+                <div className="input-group">
+                  <label>Management IP:</label>
+                  <input
+                    type="text"
+                    value={nodeMgmtIp}
+                    onChange={handleNodeMgmtIpChange}
+                  />
+                </div>
               </div>
               <div className="actions">
                 <button onClick={handleModalSubmit}>Submit</button>
@@ -966,12 +1017,15 @@ const App = () => {
                         placeholder="Enter bind path"
                       />
                     ))}
-                    <button onClick={handleAddBind}>Add Bind</button>
+                    <button onClick={handleAddKindBind}>Add Bind</button>
                   </div>
                 )}
               </div>
 
-              <button onClick={() => setShowKindModal(false)}>Done</button>
+              <div className="actions">
+                <button onClick={() => setShowKindModal(false)}>Cancel</button>
+                <button onClick={handleKindModalDone}>Done</button>
+              </div>
             </div>
           </div>
         )}

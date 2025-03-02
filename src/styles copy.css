@@ -55,11 +55,17 @@ h1 {
 }
 
 .reactflow-wrapper {
-  width: 60%;
+  flex-grow: 1;
   height: 100%;
-  background-color: #e0e0e0;
-  overflow: hidden;
-  position: relative;
+  background-color: #ffffff;
+  background-image: 
+    linear-gradient(to right, #f0f0f0 1px, transparent 1px),
+    linear-gradient(to bottom, #f0f0f0 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.react-flow__renderer {
+  background: transparent;
 }
 
 .yaml-output {
@@ -119,11 +125,46 @@ button:hover {
   background-color: white;
   padding: 20px;
   border-radius: 5px;
-  min-width: 400px;
-  max-width: 500px;
+  width: 400px;
+  max-height: 80vh;
   box-sizing: border-box;
   margin: 0 20px;
   position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-content .form-content {
+  overflow-y: auto;
+  max-height: calc(80vh - 120px);
+  padding-right: 10px;
+  margin-bottom: 20px;
+}
+
+.modal-content .actions {
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
+  margin-top: auto;
+}
+
+.modal-content .form-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content .form-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.modal-content .form-content::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.modal-content .form-content::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .modal-content h2 {
@@ -138,7 +179,6 @@ button:hover {
 }
 
 .modal-content input {
-  width: 100%;
   padding: 8px;
   margin-bottom: 15px;
   border: 1px solid #ccc;
@@ -147,6 +187,9 @@ button:hover {
 
 .modal-content .input-group {
   margin-bottom: 15px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px;
 }
 
 .modal-content .input-group label {
@@ -181,12 +224,6 @@ button:hover {
 
 .modal-content button:hover {
   background-color: #0056b3;
-}
-
-.modal-content .actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
 }
 
 .custom-node {
@@ -281,19 +318,27 @@ button:hover {
 
 .kind-config-item {
   margin: 15px 0;
-  padding: 10px;
-  border: 1px solid #eee;
-  border-radius: 5px;
+  padding: 0;
 }
 
 .kind-config-item label {
-  display: block;
-  margin-bottom: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0 0 10px 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.kind-config-item input[type="checkbox"] {
+  margin: 0;
 }
 
 .kind-config-item input[type="text"] {
   width: 100%;
-  padding: 5px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   margin-top: 5px;
 }
 
@@ -340,6 +385,9 @@ button.add-kind:hover {
 
 .input-group {
   margin: 15px 0;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px;
 }
 
 .input-group input {
@@ -363,6 +411,23 @@ button.add-kind:hover {
 
 .input-group button:hover {
   background-color: #0056b3;
+}
+
+.input-group::-webkit-scrollbar {
+  width: 8px;
+}
+
+.input-group::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.input-group::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.input-group::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 .binds-group {
@@ -477,11 +542,11 @@ button.add-kind:hover {
 }
 
 .checkbox-group label {
-  margin: 0;
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  cursor: pointer;
 }
 
 .warning-modal .modal-content {
@@ -594,4 +659,84 @@ button[onClick*="handleAddKind"] {
   cursor: pointer;
   margin: 5px;
   transition: background-color 0.2s;
+}
+
+.warning-message {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.input-error {
+  border-color: #dc3545 !important;
+}
+
+.settings-heading {
+  margin: 20px 0 15px 0;
+  color: #072452;
+  font-size: 16px;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 8px;
+}
+
+.kind-modal {
+  max-width: 500px;
+  padding: 20px;
+}
+
+.kind-config-item {
+  margin-bottom: 20px;
+}
+
+.kind-config-item label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding: 0;
+  font-weight: normal;
+}
+
+.kind-config-item input[type="checkbox"] {
+  margin: 0;
+}
+
+.kind-config-item input[type="text"] {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-top: 8px;
+  box-sizing: border-box;
+}
+
+.exec-commands,
+.binds {
+  margin-top: 10px;
+  margin-left: 20px;
+}
+
+.exec-commands input,
+.binds input {
+  margin-bottom: 8px;
+  width: calc(100% - 20px);
+}
+
+.kind-modal button {
+  background-color: #072452;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 15px;
+  float: right;
+}
+
+.kind-modal button:hover {
+  background-color: #0a3270;
 }
