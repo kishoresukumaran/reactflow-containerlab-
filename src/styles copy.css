@@ -316,6 +316,26 @@ button:hover {
   overflow-y: auto;
 }
 
+.kind-config-modal .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.kind-config-modal button {
+  background-color: #072452;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.kind-config-modal button:hover {
+  background-color: #0a3270;
+}
+
 .kind-config-item {
   margin: 15px 0;
   padding: 0;
@@ -676,6 +696,9 @@ button[onClick*="handleAddKind"] {
 }
 
 .settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 20px 0 15px 0;
   color: #072452;
   font-size: 16px;
@@ -739,4 +762,33 @@ button[onClick*="handleAddKind"] {
 
 .kind-modal button:hover {
   background-color: #0a3270;
+}
+
+.info-icon {
+  cursor: help;
+  color: #072452;
+  font-size: 14px;
+  position: relative;
+  display: inline-block;
+}
+
+.info-icon:hover::after {
+  content: "Define general settings for the nodes";
+  position: absolute;
+  left: 110%;
+  right: 0;
+  top: 0%;
+  transform: none;
+  background: #333;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  width: 180px;
+  white-space: normal;
+  word-wrap: break-word;
+  z-index: 1000;
+  margin-top: 5px;
+  line-height: 1.4;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }

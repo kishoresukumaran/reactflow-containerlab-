@@ -703,7 +703,13 @@ const App = () => {
   return (
     <ReactFlowProvider>
       <div className="app">
-        <h1>Container Lab Topology Designer</h1>
+        <div className="header">
+          <div className="header-buttons">
+            <button className="header-button">ContainerLab</button>
+            <button className="header-button">ACT</button>
+          </div>
+          <h1>Container Lab Topology Designer</h1>
+        </div>
         <div className="dndflow">
           <div className="node-panel">
             <Sidebar />
@@ -716,7 +722,10 @@ const App = () => {
               />
             </div>
 
-            <h3 className="settings-heading">Global Settings</h3>
+            <h3 className="settings-heading">
+              Global Settings
+              <span className="info-icon">ⓘ</span>
+            </h3>
 
             <div className="checkbox-group">
               <label>

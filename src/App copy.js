@@ -694,6 +694,12 @@ const App = () => {
     setKinds(newKinds);
   };
 
+  // Add handleKindModalDone function
+  const handleKindModalDone = () => {
+    setShowKindModal(false);
+    updateYaml(nodes, edges);
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -710,7 +716,10 @@ const App = () => {
               />
             </div>
 
-            <h3 className="settings-heading">Global Settings</h3>
+            <h3 className="settings-heading">
+              Global Settings
+              <span className="info-icon">ⓘ</span>
+            </h3>
 
             <div className="checkbox-group">
               <label>
@@ -1016,7 +1025,10 @@ const App = () => {
                 )}
               </div>
 
-              <button onClick={() => setShowKindModal(false)}>Done</button>
+              <div className="actions">
+                <button onClick={() => setShowKindModal(false)}>Cancel</button>
+                <button onClick={handleKindModalDone}>Done</button>
+              </div>
             </div>
           </div>
         )}
