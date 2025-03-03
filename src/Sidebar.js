@@ -8,7 +8,7 @@ const Sidebar = () => {
 
   return (
     <aside>
-      <div className="description">Drag and drop to add nodes</div>
+      <div className="description"><h3 className="settings-heading">Drag and drop to add nodes</h3></div>
       <div
         className="node"
         onDragStart={(event) => onDragStart(event, 'node')}

@@ -23,7 +23,7 @@ h1 {
 }
 
 .node-panel {
-  width: 20%;
+  /* width: 20%; */
   padding: 10px;
   background-color: #f9f9f9;
   border-right: 1px solid #ccc;
@@ -41,6 +41,32 @@ h1 {
 }
 
 .node-panel input {
+  width: 100%;
+  padding: 5px;
+  box-sizing: border-box;
+}
+
+.node-panel-act {
+  width: 20%;
+  /* padding: 10px; */
+  background-color: #f9f9f9;
+  display: flex;
+  flex-direction: column;
+  height: 10%;
+  overflow-y: auto;
+  min-width: 250px; /* Ensure enough width for labels */
+}
+
+.node-panel-act div {
+  margin-bottom: 10px;
+}
+
+.node-panel-act label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+.node-panel-act input {
   width: 100%;
   padding: 5px;
   box-sizing: border-box;
@@ -569,6 +595,26 @@ button.add-kind:hover {
   cursor: pointer;
 }
 
+.checkbox-group-act {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  min-width: 120px;
+}
+
+.checkbox-group-act label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.checkbox-group-act input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
 .warning-modal .modal-content {
   background-color: #fff3cd;
   border: 1px solid #ffeeba;
@@ -702,7 +748,7 @@ button[onClick*="handleAddKind"] {
   margin: 20px 0 15px 0;
   color: #072452;
   font-size: 16px;
-  border-bottom: 1px solid #ccc;
+  /* border-bottom: 1px solid #ccc; */
   padding-bottom: 8px;
 }
 
@@ -829,4 +875,151 @@ button[onClick*="handleAddKind"] {
 
 .header-button:hover {
   background-color: #f0f0f0;
+}
+
+.header-button.active {
+  background-color: #f0f0f0;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.act-divider {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 20px 0;
+  width: 100%;
+}
+
+.act-section {
+  margin-top: 20px;
+}
+
+.input-section-act {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+
+.input-group-act {
+  margin: 10px 0;
+}
+
+.input-group-act label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+}
+
+.input-group-act input {
+  width: calc(100% - 20px);
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.toggle-group-act {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-switch-act {
+  position: relative;
+  display: inline-block;
+  width: 50px;  /* Reduced width */
+  height: 28px;
+}
+
+.toggle-switch-act input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-switch-act label {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  border-radius: 34px;
+  transition: .4s;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-switch-act label:before {
+  position: absolute;
+  content: "";
+  height: 24px;  /* Slightly larger ball */
+  width: 24px;
+  left: 2px;    /* Reduced left margin */
+  background-color: white;
+  border-radius: 50%;
+  transition: .4s;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.toggle-switch-act input:checked + label {
+  background-color: #2196F3;
+}
+
+.toggle-switch-act input:checked + label:before {
+  transform: translate(22px, -50%);  /* Adjusted translation */
+}
+
+.toggle-label-act {
+  position: absolute;
+  right: -40px;
+  font-size: 14px;
+}
+
+.reset-button-act {
+  width: calc(100% - 20px);
+  padding: 10px;
+  margin: 20px 10px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.reset-button-act:hover {
+  background-color: #cc0000;
+}
+
+.input-error-act {
+  border-color: #ff4444 !important;
+}
+
+.warning-message-act {
+  color: #ff4444;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.modal-act {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content-act {
+  background-color: white;
+  padding: 20px;
+  border-radius: 4px;
+  width: 400px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
