@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ContainerLab from './components/ContainerLab';
 import ACT from './components/ACT';
+import ClabServers from './components/ClabServers';
 
 const App = () => {
   const [mode, setMode] = useState('containerlab');
@@ -21,11 +22,18 @@ const App = () => {
           >
             ACT
           </button>
+          <button 
+            className={`header-button ${mode === 'servers' ? 'active' : ''}`}
+            onClick={() => setMode('servers')}
+          >
+            Servers
+          </button>
         </div>
         <h1>Container Lab Topology Designer</h1>
       </div>
       
-      {mode === 'containerlab' ? <ContainerLab /> : <ACT />}
+      {mode === 'containerlab' ? <ContainerLab /> : 
+       mode === 'act' ? <ACT /> : <ClabServers />}
     </div>
   );
 };
