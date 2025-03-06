@@ -48,14 +48,16 @@ const getLayoutedElements = async (nodes, edges) => {
 let id = 0;
 const getId = () => `node_${id++}`;
 
+const DEFAULT_YAML = {};
+
 // Add default YAML constant
-const DEFAULT_YAML = {
-  name: '',
-  topology: {
-    nodes: [],
-    links: []
-  }
-};
+// const DEFAULT_YAML = {
+//   name: '',
+//   topology: {
+//     nodes: [],
+//     links: []
+//   }
+// };
 
 // Add YAML to topology converter function
 const convertYamlToTopology = (yamlString, existingEdges, existingNodes) => {
@@ -112,6 +114,8 @@ const App = () => {
   const [mgmtNetwork, setMgmtNetwork] = useState("");
   const [ipv4Subnet, setIpv4Subnet] = useState("");
   const [ipv6Subnet, setIpv6Subnet] = useState("");
+  const [isYamlValid, setIsYamlValid] = useState(true);
+  const [yamlParseError, setYamlParseError] = useState('');
   const [kinds, setKinds] = useState([{
     name: '',
     config: {
@@ -276,54 +280,190 @@ const App = () => {
   );
 
   // Update updateYaml function to include defaults section
-  const updateYaml = (updatedNodes, updatedEdges) => {
-    const yamlData = {
-      name: topologyName,
-      topology: {
-        nodes: updatedNodes.reduce((acc, node) => {
-          const nodeConfig = {};
-          if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
-          if (node.data.image?.trim()) nodeConfig.image = node.data.image;
-          if (node.data.binds?.some(bind => bind.trim())) {
-            nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
-          }
-          if (node.data.mgmtIp?.trim()) nodeConfig["mgmt-ipv4"] = node.data.mgmtIp;
+  // const updateYaml = (updatedNodes, updatedEdges) => {
+  //   const yamlData = {
+  //     name: topologyName,
+  //     topology: {
+  //       nodes: updatedNodes.reduce((acc, node) => {
+  //         const nodeConfig = {};
+  //         if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
+  //         if (node.data.image?.trim()) nodeConfig.image = node.data.image;
+  //         if (node.data.binds?.some(bind => bind.trim())) {
+  //           nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
+  //         }
+  //         if (node.data.mgmtIp?.trim()) nodeConfig["mgmt-ipv4"] = node.data.mgmtIp;
           
-          if (Object.keys(nodeConfig).length > 0) {
-            acc[node.data.label] = nodeConfig;
-          }
-          return acc;
-        }, {}),
-        // Add defaults section
-        ...(showDefault && defaultKind && {
-          defaults: {
-            kind: defaultKind
-          }
-        }),
-        // Rest of the topology sections
-        ...(showKind && kinds.length > 0 && {
-          kinds: kinds.reduce((acc, kind) => {
-            if (kind.name) {
-              acc[kind.name] = {
-                ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
-                ...(kind.config.showImage && { image: kind.config.image }),
-                ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
-                ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
-              };
-            }
-            return acc;
-          }, {})
-        }),
-        links: updatedEdges.map((edge) => ({
-          endpoints: [
-            `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
-            `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
-          ]
-        }))
-      }
-    };
+  //         if (Object.keys(nodeConfig).length > 0) {
+  //           acc[node.data.label] = nodeConfig;
+  //         }
+  //         return acc;
+  //       }, {}),
+  //       // Add defaults section
+  //       ...(showDefault && defaultKind && {
+  //         defaults: {
+  //           kind: defaultKind
+  //         }
+  //       }),
+  //       // Rest of the topology sections
+  //       ...(showKind && kinds.length > 0 && {
+  //         kinds: kinds.reduce((acc, kind) => {
+  //           if (kind.name) {
+  //             acc[kind.name] = {
+  //               ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
+  //               ...(kind.config.showImage && { image: kind.config.image }),
+  //               ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
+  //               ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
+  //             };
+  //           }
+  //           return acc;
+  //         }, {})
+  //       }),
+  //       links: updatedEdges.map((edge) => ({
+  //         endpoints: [
+  //           `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
+  //           `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
+  //         ]
+  //       }))
+  //     }
+  //   };
 
-    // Add management section if enabled
+  //   // Add management section if enabled
+  //   if (showMgmt) {
+  //     yamlData.mgmt = {
+  //       network: mgmtNetwork,
+  //       "ipv4-subnet": ipv4Subnet,
+  //       ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
+  //     };
+  //   }
+
+  //   const generatedYaml = yaml.dump(yamlData);
+  //   setYamlOutput(generatedYaml);
+  //   setEditableYaml(generatedYaml); // Update editableYaml state
+  // };
+  // const updateYaml = (updatedNodes, updatedEdges) => {
+  //   // Start with a base YAML structure
+  //   const yamlData = {};
+  
+  //   // Add topology name if provided
+  //   if (topologyName.trim()) {
+  //     yamlData.name = topologyName;
+  //   }
+  
+  //   // Add nodes to the topology section
+  //   if (updatedNodes.length > 0) {
+  //     yamlData.topology = yamlData.topology || {};
+  //     yamlData.topology.nodes = updatedNodes.reduce((acc, node) => {
+  //       const nodeConfig = {};
+  //       if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
+  //       if (node.data.image?.trim()) nodeConfig.image = node.data.image;
+  //       if (node.data.binds?.some(bind => bind.trim())) {
+  //         nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
+  //       }
+  //       if (node.data.mgmtIp?.trim()) nodeConfig['mgmt-ipv4'] = node.data.mgmtIp;
+  
+  //       acc[node.data.label] = nodeConfig;
+  //       return acc;
+  //     }, {});
+  //   }
+  
+  //   // Add links to the topology section
+  //   if (updatedEdges.length > 0) {
+  //     yamlData.topology = yamlData.topology || {};
+  //     yamlData.topology.links = updatedEdges.map((edge) => ({
+  //       endpoints: [
+  //         `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
+  //         `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
+  //       ]
+  //     }));
+  //   }
+  
+  //   // Add management section if enabled
+  //   if (showMgmt) {
+  //     yamlData.mgmt = {
+  //       network: mgmtNetwork,
+  //       "ipv4-subnet": ipv4Subnet,
+  //       ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
+  //     };
+  //   }
+  
+  //   // Add kinds section if enabled
+  //   if (showKind && kinds.length > 0) {
+  //     yamlData.topology = yamlData.topology || {};
+  //     yamlData.topology.kinds = kinds.reduce((acc, kind) => {
+  //       if (kind.name) {
+  //         acc[kind.name] = {
+  //           ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
+  //           ...(kind.config.showImage && { image: kind.config.image }),
+  //           ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
+  //           ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
+  //         };
+  //       }
+  //       return acc;
+  //     }, {});
+  //   }
+  
+  //   // Add defaults section if enabled
+  //   if (showDefault && defaultKind.trim()) {
+  //     yamlData.topology = yamlData.topology || {};
+  //     yamlData.topology.defaults = { kind: defaultKind };
+  //   }
+  
+  //   // Generate the YAML output
+  //   const generatedYaml = yaml.dump(yamlData);
+    
+  //   // Update YAML state
+  //   setYamlOutput(generatedYaml);
+  //   setEditableYaml(generatedYaml); // Update editable YAML state
+  // };
+  const updateYaml = (updatedNodes, updatedEdges) => {
+    // Check if all inputs are empty
+    const isEmpty =
+      !topologyName.trim() &&
+      updatedNodes.length === 0 &&
+      updatedEdges.length === 0 &&
+      !showMgmt &&
+      !showKind &&
+      !showDefault;
+  
+    if (isEmpty) {
+      setYamlOutput('');
+      setEditableYaml(''); // Update editable YAML state
+      return;
+    }
+  
+    // Start building the YAML data
+    const yamlData = {};
+  
+    if (topologyName.trim()) {
+      yamlData.name = topologyName;
+    }
+  
+    if (updatedNodes.length > 0) {
+      yamlData.topology = yamlData.topology || {};
+      yamlData.topology.nodes = updatedNodes.reduce((acc, node) => {
+        const nodeConfig = {};
+        if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
+        if (node.data.image?.trim()) nodeConfig.image = node.data.image;
+        if (node.data.binds?.some(bind => bind.trim())) {
+          nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
+        }
+        if (node.data.mgmtIp?.trim()) nodeConfig['mgmt-ipv4'] = node.data.mgmtIp;
+  
+        acc[node.data.label] = nodeConfig;
+        return acc;
+      }, {});
+    }
+  
+    if (updatedEdges.length > 0) {
+      yamlData.topology = yamlData.topology || {};
+      yamlData.topology.links = updatedEdges.map((edge) => ({
+        endpoints: [
+          `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
+          `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
+        ]
+      }));
+    }
+  
     if (showMgmt) {
       yamlData.mgmt = {
         network: mgmtNetwork,
@@ -331,11 +471,34 @@ const App = () => {
         ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
       };
     }
-
+  
+    if (showKind && kinds.length > 0) {
+      yamlData.topology = yamlData.topology || {};
+      yamlData.topology.kinds = kinds.reduce((acc, kind) => {
+        if (kind.name) {
+          acc[kind.name] = {
+            ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
+            ...(kind.config.showImage && { image: kind.config.image }),
+            ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
+            ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
+          };
+        }
+        return acc;
+      }, {});
+    }
+  
+    if (showDefault && defaultKind.trim()) {
+      yamlData.topology = yamlData.topology || {};
+      yamlData.topology.defaults = { kind: defaultKind };
+    }
+  
+    // Generate and set the YAML output
     const generatedYaml = yaml.dump(yamlData);
     setYamlOutput(generatedYaml);
-    setEditableYaml(generatedYaml); // Update editableYaml state
+    setEditableYaml(generatedYaml); // Update editable YAML state
   };
+  
+  
 
   // Update handleTopologyNameChange function
   const handleTopologyNameChange = (event) => {
@@ -762,17 +925,70 @@ const App = () => {
   };
 
   // Add handler function
+  // const handleYamlChange = (event) => {
+  //   const newYaml = event.target.value;
+  //   setEditableYaml(newYaml);
+
+  //   const topology = convertYamlToTopology(newYaml, edges, nodes);
+  //   if (topology) {
+  //     setNodes(topology.nodes);
+  //     setEdges(topology.edges);
+  //   }
+  // };
+
   const handleYamlChange = (event) => {
     const newYaml = event.target.value;
     setEditableYaml(newYaml);
-
-    const topology = convertYamlToTopology(newYaml, edges, nodes);
-    if (topology) {
-      setNodes(topology.nodes);
-      setEdges(topology.edges);
+  
+    try {
+      // Parse the YAML input
+      const parsedYaml = yaml.load(newYaml);
+  
+      // Validate and update nodes and edges based on parsed YAML
+      if (parsedYaml?.topology?.nodes) {
+        const newNodes = Object.entries(parsedYaml.topology.nodes).map(([nodeName, nodeData], index) => ({
+          id: nodeName,
+          type: 'default',
+          position: { x: 100 + (index % 3) * 200, y: 100 + Math.floor(index / 3) * 150 }, // Grid layout
+          data: {
+            label: nodeName,
+            kind: nodeData.kind || '',
+            image: nodeData.image || '',
+            binds: nodeData.binds || [],
+            mgmtIp: nodeData['mgmt-ipv4'] || ''
+          }
+        }));
+  
+        const newEdges = (parsedYaml.topology.links || []).map((link, index) => {
+          const [source, sourceInterface] = link.endpoints[0].split(':');
+          const [target, targetInterface] = link.endpoints[1].split(':');
+  
+          return {
+            id: `edge_${index}`,
+            source,
+            target,
+            data: {
+              sourceInterface,
+              targetInterface
+            }
+          };
+        });
+  
+        // Update state with new nodes and edges
+        setNodes(newNodes);
+        setEdges(newEdges);
+        setIsYamlValid(true);
+        setYamlParseError('');
+      } else {
+        throw new Error('Invalid YAML structure');
+      }
+    } catch (error) {
+      console.error('Failed to parse YAML:', error);
+      setIsYamlValid(false);
+      setYamlParseError(`Error parsing YAML: ${error.message}`);
     }
   };
-
+  
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -930,8 +1146,8 @@ const App = () => {
                   spellCheck="false"
                 />
                 <div className="button-group">
-                  <button onClick={handleDownloadYaml}>Download YAML</button>
-                  <button className="deploy-button" onClick={handleDeploy}>Deploy</button>
+                  <button onClick={handleDownloadYaml} disabled={!yamlOutput.trim()}>Download YAML</button>
+                  <button className="deploy-button" onClick={handleDeploy} disabled={!yamlOutput.trim()}>Deploy</button>
                 </div>
               </div>
             </>
