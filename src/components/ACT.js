@@ -28,6 +28,9 @@ const ACT = () => {
   const [showVeos, setShowVeos] = useState(false);
   const [showCvp, setShowCvp] = useState(false);
   const [showGeneric, setShowGeneric] = useState(false);
+  const [isYamlValid, setIsYamlValid] = useState(true);
+  const [yamlParseError, setYamlParseError] = useState("");
+  const [isUpdatingFromYaml, setIsUpdatingFromYaml] = useState(false);
 
   const [veosInputs, setVeosInputs] = useState({
     username: '',
@@ -50,15 +53,11 @@ const ACT = () => {
     version: ''
   });
 
-  // Add new state variables
   const [isEdgeModalOpen, setIsEdgeModalOpen] = useState(false);
   const [sourceInterface, setSourceInterface] = useState("");
   const [targetInterface, setTargetInterface] = useState("");
   const [newEdgeData, setNewEdgeData] = useState(null);
   const [edgeModalWarning, setEdgeModalWarning] = useState(false);
-
-  // Add state for edge modification
-  const [isModifyingEdge, setIsModifyingEdge] = useState(false);
 
   // Update onConnect handler
   const onConnect = useCallback((params) => {
@@ -109,17 +108,6 @@ const ACT = () => {
     });
   };
 
-  // Add edge context menu handler
-  const onEdgeContextMenu = (event, edge) => {
-    event.preventDefault();
-    setContextMenu({
-      mouseX: event.clientX - 2,
-      mouseY: event.clientY - 4,
-      element: edge,
-      type: 'edge'
-    });
-  };
-
   const handleContextMenuClose = () => {
     setContextMenu(null);
   };
@@ -128,14 +116,6 @@ const ACT = () => {
     const nodeToRemove = contextMenu.element;
     setNodes((nds) => nds.filter((n) => n.id !== nodeToRemove.id));
     setContextMenu(null);
-  };
-
-  // Add edge handlers
-  const handleRemoveEdge = () => {
-    const edgeToRemove = contextMenu.element;
-    setEdges((eds) => eds.filter((e) => e.id !== edgeToRemove.id));
-    setContextMenu(null);
-    updateYamlAct();
   };
 
   const handleModifyNode = () => {
@@ -147,21 +127,6 @@ const ACT = () => {
     setNewNode(nodeToModify);
     setIsModifying(true);
     setIsModalOpen(true);
-    setContextMenu(null);
-  };
-
-  // Add edge handlers
-  const handleModifyEdge = () => {
-    const edgeToModify = contextMenu.element;
-    setSourceInterface(edgeToModify.data.sourceInterface || "");
-    setTargetInterface(edgeToModify.data.targetInterface || "");
-    setNewEdgeData({
-      ...edgeToModify,
-      sourceNodeName: nodes.find(n => n.id === edgeToModify.source).data.label,
-      targetNodeName: nodes.find(n => n.id === edgeToModify.target).data.label
-    });
-    setIsModifyingEdge(true);
-    setIsEdgeModalOpen(true);
     setContextMenu(null);
   };
 
@@ -223,11 +188,13 @@ const ACT = () => {
     setTargetInterface("");
     setNewEdgeData(null);
     setEdgeModalWarning(false);
-    updateYamlAct();
   };
 
-  // Update updateYamlAct to include links
-  const updateYamlAct = () => {
+  // Update YAML output based on diagram changes
+  const updateYamlFromDiagram = () => {
+    // Skip if we're currently updating the diagram from YAML
+    if (isUpdatingFromYaml) return;
+    
     let yamlSections = [];
     let nodesData = { nodes: [] };
 
@@ -278,13 +245,15 @@ const ACT = () => {
 
     // Add regular nodes
     nodes.forEach(node => {
-      nodesData.nodes.push({
-        [node.data.label]: {
-          ip_addr: node.data.ip,
-          node_type: node.data.type,
-          device_model: node.data.model
-        }
-      });
+      if (node.data && node.data.label) {
+        nodesData.nodes.push({
+          [node.data.label]: {
+            ip_addr: node.data.ip || "",
+            node_type: node.data.type || "",
+            device_model: node.data.model || ""
+          }
+        });
+      }
     });
 
     // Add nodes section if there are any nodes
@@ -295,22 +264,222 @@ const ACT = () => {
     // Add links section
     if (edges.length > 0) {
       const linksData = {
-        links: edges.map(edge => ({
-          connection: [
-            `${nodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
-            `${nodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
-          ]
-        }))
+        links: edges.map(edge => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const targetNode = nodes.find(n => n.id === edge.target);
+          if (sourceNode && targetNode && edge.data) {
+            return {
+              connection: [
+                `${sourceNode.data.label}:${edge.data.sourceInterface}`,
+                `${targetNode.data.label}:${edge.data.targetInterface}`
+              ]
+            };
+          }
+          return null;
+        }).filter(link => link !== null)
       };
-      yamlSections.push(yaml.dump(linksData));
+      
+      if (linksData.links.length > 0) {
+        yamlSections.push(yaml.dump(linksData));
+      }
     }
 
     setYamlOutput(yamlSections.join('\n'));
+    setIsYamlValid(true);
+    setYamlParseError("");
   };
 
-  // Update useEffect to watch for node changes
+  // Handle manual YAML edits by the user
+  const handleYamlChange = (e) => {
+    const newYaml = e.target.value;
+    setYamlOutput(newYaml);
+    
+    // Validate and parse new YAML
+    // try {
+    updateDiagramFromYaml(newYaml);
+    // setIsYamlValid(true);
+    // setYamlParseError("");
+    // } catch (error) {
+    //   setIsYamlValid(false);
+    //   setYamlParseError(`Error parsing YAML: ${error.message}`);
+    // }
+  };
+
+  // Update diagram based on YAML input
+  const updateDiagramFromYaml = (yamlText) => {
+    if (!yamlText.trim()) {
+      // If YAML is empty, just reset the topology
+      handleReset();
+      return;
+    }
+
+    setIsUpdatingFromYaml(true);
+
+    try {
+      // Split the YAML into sections by document separator (---)
+      const yamlSections = yamlText.split(/---+/).filter(section => section.trim());
+      
+      // Initialize data holders
+      let newNodes = [];
+      let newEdges = [];
+      let parsedVeos = null;
+      let parsedCvp = null;
+      let parsedGeneric = null;
+      let cvpNode = null;
+      let nodeCounter = 1;
+      let positionCounter = 0;
+      
+      // Parse each section
+      for (let section of yamlSections) {
+        let parsedSection;
+        try {
+          parsedSection = yaml.load(section);
+        } catch (error) {
+          console.error("Failed to parse YAML section:", error);
+          throw new Error(`Invalid YAML syntax in section: ${section.substring(0, 50)}...`);
+        }
+        
+        // Skip empty sections
+        if (!parsedSection) continue;
+        
+        // Handle global settings
+        if (parsedSection.veos) {
+          parsedVeos = parsedSection.veos;
+        } else if (parsedSection.cvp) {
+          parsedCvp = parsedSection.cvp;
+        } else if (parsedSection.generic) {
+          parsedGeneric = parsedSection.generic;
+        }
+        
+        // Handle nodes
+        if (parsedSection.nodes) {
+          parsedSection.nodes.forEach(nodeObj => {
+            const nodeName = Object.keys(nodeObj)[0];
+            const nodeData = nodeObj[nodeName];
+            
+            // Generate node positions in a grid layout
+            const columns = 3;
+            const rowHeight = 150;
+            const colWidth = 200;
+            const row = Math.floor(positionCounter / columns);
+            const col = positionCounter % columns;
+            positionCounter++;
+            
+            // Check if this is a CVP node
+            if (nodeName === "CVP" && nodeData.node_type === "cvp") {
+              cvpNode = nodeData;
+            } else {
+              // Regular node
+              newNodes.push({
+                id: `node_${nodeCounter++}`,
+                position: { x: 100 + col * colWidth, y: 100 + row * rowHeight },
+                data: {
+                  label: nodeName,
+                  ip: nodeData.ip_addr || "",
+                  type: nodeData.node_type || "",
+                  model: nodeData.device_model || ""
+                }
+              });
+            }
+          });
+        }
+        
+        // Handle links
+        if (parsedSection.links) {
+          parsedSection.links.forEach((linkObj, index) => {
+            if (linkObj.connection && linkObj.connection.length === 2) {
+              // Parse node and interface names
+              const sourceConn = linkObj.connection[0].split(':');
+              const targetConn = linkObj.connection[1].split(':');
+              
+              if (sourceConn.length !== 2 || targetConn.length !== 2) {
+                throw new Error(`Invalid connection format in link ${index}: ${linkObj.connection}`);
+              }
+              
+              const sourceNodeName = sourceConn[0];
+              const sourceInterface = sourceConn[1];
+              const targetNodeName = targetConn[0];
+              const targetInterface = targetConn[1];
+              
+              // Find node IDs by name
+              const sourceNode = newNodes.find(n => n.data.label === sourceNodeName);
+              const targetNode = newNodes.find(n => n.data.label === targetNodeName);
+              
+              if (!sourceNode || !targetNode) {
+                console.warn(`Cannot create edge: missing node ${!sourceNode ? sourceNodeName : targetNodeName}`);
+                return;
+              }
+              
+              // Create the edge
+              newEdges.push({
+                id: `edge_${sourceNode.id}_${targetNode.id}`,
+                source: sourceNode.id,
+                target: targetNode.id,
+                data: {
+                  sourceInterface,
+                  targetInterface
+                }
+              });
+            }
+          });
+        }
+      }
+      
+      // Update component state with parsed data
+      setNodes(newNodes);
+      setEdges(newEdges);
+      
+      // Update global settings
+      if (parsedVeos) {
+        setShowVeos(true);
+        setVeosInputs({
+          username: parsedVeos.username || '',
+          password: parsedVeos.password || '',
+          version: parsedVeos.version || ''
+        });
+      } else {
+        setShowVeos(false);
+        setVeosInputs({ username: '', password: '', version: '' });
+      }
+      
+      if (parsedCvp || cvpNode) {
+        setShowCvp(true);
+        setCvpInputs({
+          username: parsedCvp?.username || '',
+          password: parsedCvp?.password || '',
+          version: parsedCvp?.version || '',
+          instance: parsedCvp?.instance || '',
+          ipAddress: cvpNode?.ip_addr || '',
+          autoConfig: cvpNode?.auto_configuration || false
+        });
+      } else {
+        setShowCvp(false);
+        setCvpInputs({ username: '', password: '', version: '', instance: '', ipAddress: '', autoConfig: false });
+      }
+      
+      if (parsedGeneric) {
+        setShowGeneric(true);
+        setGenericInputs({
+          username: parsedGeneric.username || '',
+          password: parsedGeneric.password || '',
+          version: parsedGeneric.version || ''
+        });
+      } else {
+        setShowGeneric(false);
+        setGenericInputs({ username: '', password: '', version: '' });
+      }
+      
+    } catch (error) {
+      console.error("Failed to update diagram from YAML:", error);
+      throw error;
+    } finally {
+      setIsUpdatingFromYaml(false);
+    }
+  };
+
+  // Update YAML when topology changes
   useEffect(() => {
-    updateYamlAct();
+    updateYamlFromDiagram();
   }, [
     showVeos, showCvp, showGeneric,
     veosInputs, cvpInputs, genericInputs,
@@ -322,6 +491,31 @@ const ACT = () => {
     if (!e.target.checked) {
       setVeosInputs({ username: '', password: '', version: '' });
     }
+  };
+
+  const handleDownloadYaml = () => {
+    // Create a blob with the YAML content
+    const blob = new Blob([yamlOutput], { type: 'text/yaml' });
+    
+    // Create a URL for the blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link element
+    const link = document.createElement('a');
+    
+    // Set link properties
+    link.href = url;
+    link.download = 'network_topology.yaml';
+    
+    // Append to the body (not visible)
+    document.body.appendChild(link);
+    
+    // Trigger the download
+    link.click();
+    
+    // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
   };
 
   const handleCvpCheckbox = (e) => {
@@ -365,6 +559,18 @@ const ACT = () => {
       password: '',
       version: ''
     });
+  };
+
+  // Add apply YAML changes button handler
+  const handleApplyYaml = () => {
+    try {
+      updateDiagramFromYaml(yamlOutput);
+      setIsYamlValid(true);
+      setYamlParseError("");
+    } catch (error) {
+      setIsYamlValid(false);
+      setYamlParseError(`Error applying YAML: ${error.message}`);
+    }
   };
 
   return (
@@ -540,15 +746,34 @@ const ACT = () => {
           onDrop={onDrop}
           onDragOver={onDragOver}
           onNodeContextMenu={onNodeContextMenu}
-          onEdgeContextMenu={onEdgeContextMenu}
           fitView
         >
           <Controls />
         </ReactFlow>
       </div>
       <div className="yaml-output">
-        <h3>YAML</h3>
-        <pre>{yamlOutput}</pre>
+        <div className="yaml-header-act">
+          <h3>YAML Editor</h3>
+          <div className="yaml-actions">
+            {/* <button className="yaml-button" onClick={handleApplyYaml} disabled={!yamlOutput.trim()}>
+              Apply Changes
+            </button> */}
+            <button className="download-button-act" onClick={handleDownloadYaml} disabled={!yamlOutput.trim()}>
+              Download YAML
+            </button>
+          </div>
+        </div>
+        {!isYamlValid && (
+          <div className="yaml-error-message">
+            {yamlParseError}
+          </div>
+        )}
+        <textarea
+          className={`yaml-editor ${!isYamlValid ? 'yaml-error' : ''}`}
+          value={yamlOutput}
+          onChange={handleYamlChange}
+          spellCheck="false"
+        />
       </div>
 
       {isModalOpen && (
@@ -622,7 +847,7 @@ const ACT = () => {
             )}
             <div className="form-content">
               <div className="input-group-act">
-                <label>{newEdgeData.sourceNodeName} Interface:</label>
+                <label>{newEdgeData?.sourceNodeName} Interface:</label>
                 <input
                   type="text"
                   value={sourceInterface}
@@ -632,7 +857,7 @@ const ACT = () => {
                 />
               </div>
               <div className="input-group-act">
-                <label>{newEdgeData.targetNodeName} Interface:</label>
+                <label>{newEdgeData?.targetNodeName} Interface:</label>
                 <input
                   type="text"
                   value={targetInterface}
@@ -658,7 +883,7 @@ const ACT = () => {
 
       {contextMenu && (
         <div
-          className="context-menu-act"
+          className="context-menu"
           style={{
             position: 'absolute',
             top: contextMenu.mouseY,
@@ -668,19 +893,9 @@ const ACT = () => {
             zIndex: 1000,
           }}
         >
-          {contextMenu.type === 'edge' ? (
-            <>
-              <button onClick={handleModifyEdge}>Modify</button>
-              <button onClick={handleRemoveEdge}>Remove Edge</button>
-              <button onClick={() => setContextMenu(null)}>Cancel</button>
-            </>
-          ) : (
-            <>
-              <button onClick={handleModifyNode}>Modify</button>
-              <button onClick={handleRemoveNode}>Remove Node</button>
-              <button onClick={() => setContextMenu(null)}>Cancel</button>
-            </>
-          )}
+          <button onClick={handleModifyNode}>Modify</button>
+          <button onClick={handleRemoveNode}>Remove Node</button>
+          <button onClick={handleContextMenuClose}>Cancel</button>
         </div>
       )}
     </div>

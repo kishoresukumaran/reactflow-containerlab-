@@ -134,6 +134,32 @@ button:hover {
   z-index: 10;
 }
 
+.download-button-act {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.yaml-header-act {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.download-button-act:hover {
+  background-color: #45a049;
+}
+
+.download-button-act:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
 .modal {
   position: fixed;
   top: 0;
@@ -1300,4 +1326,24 @@ button[onClick*="handleAddKind"] {
 
 .topology-lab-name {
   line-height: 1.5;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.button-group button {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.button-group .deploy-button {
+  background-color: #007a2b;
+  color: #ffffff;
+  border: 1px solid #bbf7d0;
+}
+
+.button-group .deploy-button:hover {
+  background-color: #bbf7d0;
 }

@@ -287,6 +287,31 @@ const ACT = () => {
     }
   };
 
+  const handleDownloadYaml = () => {
+    // Create a blob with the YAML content
+    const blob = new Blob([yamlOutput], { type: 'text/yaml' });
+    
+    // Create a URL for the blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a link element
+    const link = document.createElement('a');
+    
+    // Set link properties
+    link.href = url;
+    link.download = 'network_topology.yaml';
+    
+    // Append to the body (not visible)
+    document.body.appendChild(link);
+    
+    // Trigger the download
+    link.click();
+    
+    // Clean up
+    URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  };
+
   const handleCvpCheckbox = (e) => {
     setShowCvp(e.target.checked);
     if (!e.target.checked) {
@@ -509,7 +534,10 @@ const ACT = () => {
         </ReactFlow>
       </div>
       <div className="yaml-output">
-        <h3>YAML</h3>
+        <div className="yaml-header-act">
+          <h3>YAML Output</h3>
+          <button className="download-button-act" onClick={handleDownloadYaml} disabled={!yamlOutput.trim()}>Download YAML</button>
+        </div>
         <pre>{yamlOutput}</pre>
       </div>
 

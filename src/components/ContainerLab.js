@@ -57,6 +57,47 @@ const DEFAULT_YAML = {
   }
 };
 
+// Add YAML to topology converter function
+const convertYamlToTopology = (yamlString, existingEdges, existingNodes) => {
+  try {
+    const parsedYaml = yaml.load(yamlString);
+    if (!parsedYaml?.topology?.nodes) return null;
+
+    // Keep track of existing nodes positions
+    const existingPositions = {};
+    existingNodes.forEach(node => {
+      existingPositions[node.id] = node.position;
+    });
+
+    const newNodes = [];
+    let nodePosition = { x: 100, y: 100 };
+
+    Object.entries(parsedYaml.topology.nodes).forEach(([nodeName, nodeData]) => {
+      newNodes.push({
+        id: nodeName,
+        type: 'default',
+        position: existingPositions[nodeName] || { ...nodePosition },
+        data: { 
+          label: nodeName,
+          kind: nodeData.kind
+        }
+      });
+      nodePosition.x += 200;
+    });
+
+    return {
+      nodes: newNodes,
+      edges: existingEdges.filter(edge => 
+        newNodes.some(node => node.id === edge.source) && 
+        newNodes.some(node => node.id === edge.target)
+      )
+    };
+  } catch (error) {
+    console.error('Invalid YAML:', error);
+    return null;
+  }
+};
+
 const App = () => {
   const reactFlowWrapper = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -107,6 +148,7 @@ const App = () => {
   const [edgeModalWarning, setEdgeModalWarning] = useState(false);
   const [mode, setMode] = useState('containerlab'); // Add mode state
   const [reactFlowInstance, setReactFlowInstance] = useState(null); // Add ReactFlow instance state
+  const [editableYaml, setEditableYaml] = useState(yamlOutput); // Add new state
 
   const handleModeChange = (newMode) => {
     setMode(newMode);
@@ -290,7 +332,9 @@ const App = () => {
       };
     }
 
-    setYamlOutput(yaml.dump(yamlData));
+    const generatedYaml = yaml.dump(yamlData);
+    setYamlOutput(generatedYaml);
+    setEditableYaml(generatedYaml); // Update editableYaml state
   };
 
   // Update handleTopologyNameChange function
@@ -478,6 +522,12 @@ const App = () => {
   const handleDownloadYaml = () => {
     const blob = new Blob([yamlOutput], { type: "text/yaml;charset=utf-8" });
     saveAs(blob, `${topologyName}.yml`);
+  };
+
+  // Add the handleDeploy function near your other handlers
+  const handleDeploy = () => {
+    // Add deployment logic here
+    console.log('Deploying topology...');
   };
 
   // Handle right-click on node to show context menu
@@ -711,6 +761,18 @@ const App = () => {
     updateYaml(nodes, edges);
   };
 
+  // Add handler function
+  const handleYamlChange = (event) => {
+    const newYaml = event.target.value;
+    setEditableYaml(newYaml);
+
+    const topology = convertYamlToTopology(newYaml, edges, nodes);
+    if (topology) {
+      setNodes(topology.nodes);
+      setEdges(topology.edges);
+    }
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -861,8 +923,16 @@ const App = () => {
                 />
               </div>
               <div className="yaml-output">
-                <textarea value={yamlOutput} readOnly />
-                <button onClick={handleDownloadYaml}>Download YAML</button>
+              <h3>YAML Output</h3>
+                <textarea 
+                  value={editableYaml} 
+                  onChange={handleYamlChange}
+                  spellCheck="false"
+                />
+                <div className="button-group">
+                  <button onClick={handleDownloadYaml}>Download YAML</button>
+                  <button className="deploy-button" onClick={handleDeploy}>Deploy</button>
+                </div>
               </div>
             </>
           ) : (
