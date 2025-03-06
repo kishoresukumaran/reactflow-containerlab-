@@ -1139,7 +1139,7 @@ const App = () => {
                 />
               </div>
               <div className="yaml-output">
-              <h3>YAML Output</h3>
+              <h3>YAML Editor</h3>
                 <textarea 
                   value={editableYaml} 
                   onChange={handleYamlChange}
