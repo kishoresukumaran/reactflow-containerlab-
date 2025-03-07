@@ -3,6 +3,12 @@ body {
   font-family: Arial, sans-serif;
 }
 
+/* .app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+} */
+
 .app {
   display: flex;
   flex-direction: column;
@@ -114,7 +120,6 @@ textarea {
 }
 
 button {
-  margin-top: 10px;
   padding: 10px;
   background-color: #007bff;
   color: white;
@@ -865,30 +870,55 @@ button[onClick*="handleAddKind"] {
   box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
-.header {
+/* .header {
   display: flex;
   align-items: center;
   background-color: #072452;
   padding: 15px;
   position: relative;
+} */
+
+/* Header container */
+.header {
+  display: flex;
+  align-items: center; /* Vertically align all items */
+  justify-content: space-between; /* Space between navigation buttons and user info */
+  background-color: #072452;
+  padding: 0px 20px; /* Add padding for spacing */
 }
 
+/* Navigation buttons container */
 .header-buttons {
+  display: flex;
+  gap: 8px; /* Add spacing between buttons */
+}
+
+/* .header-buttons {
   position: absolute;
   left: 15px;
   display: flex;
   gap: 10px;
-}
+} */
 
-.header h1 {
+/* .header h1 {
   flex: 1;
   text-align: center;
   margin: 0;
   padding: 0;
   width: 100%;
+} */
+
+/* Title in the header */
+.header h1 {
+  flex: 1; /* Allow title to take available space */
+  text-align: center; /* Center text horizontally */
+  color: white; /* Make title text white for better contrast */
+  font-size: 25px; /* Increase font size */
+  margin: 0; /* Remove any default margins */
 }
 
-.header-button {
+
+/* .header-button {
   background-color: white;
   color: #072452;
   border: none;
@@ -897,15 +927,59 @@ button[onClick*="handleAddKind"] {
   cursor: pointer;
   font-weight: bold;
   transition: background-color 0.2s;
+} */
+
+/* Individual navigation buttons */
+.header-button {
+  background-color: white;
+  color: #072452;
+  border: none;
+  padding: 6px 12px; /* Reduce button size */
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 14px; /* Reduce font size */
+  transition: background-color 0.2s ease-in-out;
 }
 
 .header-button:hover {
-  background-color: #f0f0f0;
+  background-color: #f0f0f0; /* Light gray hover effect */
 }
 
 .header-button.active {
+  background-color: #f0f0f0; /* Active button styling */
+  box-shadow: inset 0px 2px 4px rgba(0,0,0,0.1);
+}
+
+/* .header-button.active {
   background-color: #f0f0f0;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+} */
+
+
+/* User info container */
+.user-info {
+  display: flex;
+  align-items: center; /* Align text and button vertically */
+  gap: 10px; /* Add spacing between "Welcome" text and logout button */
+}
+
+/* Logout button styling */
+.user-info button {
+  background-color: white;
+  color: #072452;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.user-name {
+  color: white;
+}
+
+
+.user-info button:hover {
+  background-color: #f0f0f0; /* Hover effect for logout button */
 }
 
 .act-divider {
@@ -1347,3 +1421,103 @@ button[onClick*="handleAddKind"] {
 .button-group .deploy-button:hover {
   background-color: #bbf7d0;
 }
+
+
+/* Container styles */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #072452;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Form card styles */
+.login-form {
+  width: 360px;
+  padding: 32px;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.login-form:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Heading styles */
+.login-form h2 {
+  text-align: center;
+  color: #072452;
+  font-size: 28px;
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+/* Form group styles */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #555;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #4d90fe;
+  box-shadow: 0 0 0 3px rgba(77, 144, 254, 0.2);
+}
+
+/* Button styles */
+button[type="submit"] {
+  width: 100%;
+  background-color: #072452;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 10px;
+}
+
+button[type="submit"]:hover {
+  background-color: #3367d6;
+}
+
+button[type="submit"]:active {
+  background-color: #2a56c6;
+}
+
+/* Error message styles */
+.error {
+  color: #d93025;
+  font-size: 14px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background-color: rgba(217, 48, 37, 0.05);
+  border-radius: 4px;
+  border-left: 4px solid #d93025;
+}
+
+

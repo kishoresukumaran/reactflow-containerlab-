@@ -134,6 +134,32 @@ button:hover {
   z-index: 10;
 }
 
+.download-button-act {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
+
+.yaml-header-act {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.download-button-act:hover {
+  background-color: #45a049;
+}
+
+.download-button-act:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
 .modal {
   position: fixed;
   top: 0;
@@ -1108,22 +1134,26 @@ button[onClick*="handleAddKind"] {
   cursor: pointer;
   border: 1px solid #e5e7eb;
   border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
-  margin-left: 1rem;
-  margin-right: 1rem;
+  margin: 0 1rem 0.5rem 1rem;
 }
 
-.expand-button {
-  padding: 0.5rem;
-  color: #6b7280;
-  transition: transform 0.2s;
-}
-
-.expand-button.expanded {
-  transform: rotate(180deg);
+.topology-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
 }
 
 .topology-name {
+  font-weight: 600;
+  color: #374151;
+}
+
+.topology-owner {
+  font-weight: 600;
+  color: #374151;
+}
+
+.topology-path {
   font-weight: 600;
   color: #374151;
 }
@@ -1136,11 +1166,27 @@ button[onClick*="handleAddKind"] {
   color: #1e40af;
 }
 
-/* Topology Table Styles */
+.topology-actions {
+  display: flex;
+  gap: 0.5rem;
+  /* margin-left: 1rem; */
+}
+
+.expand-button {
+  padding: 0.5rem;
+  color: #6b7280;
+  transition: transform 0.2s;
+}
+
+.expand-button.expanded {
+  transform: rotate(180deg);
+}
+
 .topology-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
+  padding: 0rem 1rem;
   background-color: white;
 }
 
@@ -1209,8 +1255,7 @@ button[onClick*="handleAddKind"] {
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 .topology-count {
@@ -1238,3 +1283,102 @@ button[onClick*="handleAddKind"] {
   background-color: #f3f4f6;
   border-radius: 0.375rem;
 }
+
+.topology-actions {
+  display: inline-flex;
+  gap: 1rem;
+  margin-left: 2rem;
+}
+
+.action-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.reconfigure-button {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.reconfigure-button:hover {
+  background-color: #bfdbfe;
+}
+
+.destroy-button {
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.destroy-button:hover {
+  background-color: #fecaca;
+}
+
+.topology-info-block > div {
+  margin-bottom: 1rem; /* Adds spacing between rows */
+}
+
+
+.topology-lab-name {
+  line-height: 1.5;
+}
+
+.button-group {
+  display: flex;
+  gap: 10px;
+}
+
+.button-group button {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.button-group .deploy-button {
+  background-color: #007a2b;
+  color: #ffffff;
+  border: 1px solid #bbf7d0;
+}
+
+.button-group .deploy-button:hover {
+  background-color: #bbf7d0;
+}
+
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-form {
+  width: 300px;
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+}
+
+.login-form h2 {
+  text-align: center;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+}
+
+.form-group input {
+  width: calc(100% - 10px);
+}
+
+.error {
+  color: red;
+}
+
