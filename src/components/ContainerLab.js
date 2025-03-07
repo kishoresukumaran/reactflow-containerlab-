@@ -13,6 +13,7 @@ import yaml from "js-yaml";
 import { saveAs } from "file-saver";
 import "../styles.css";
 import ELK from 'elkjs/lib/elk.bundled.js'; // Update elk import
+import { Server, Loader2 } from "lucide-react";
 
 const elk = new ELK();
 
@@ -153,6 +154,9 @@ const App = () => {
   const [mode, setMode] = useState('containerlab'); // Add mode state
   const [reactFlowInstance, setReactFlowInstance] = useState(null); // Add ReactFlow instance state
   const [editableYaml, setEditableYaml] = useState(yamlOutput); // Add new state
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
+  const [selectedServer, setSelectedServer] = useState(null);
+  const [deployLoading, setDeployLoading] = useState({});
 
   const handleModeChange = (newMode) => {
     setMode(newMode);
@@ -498,8 +502,6 @@ const App = () => {
     setEditableYaml(generatedYaml); // Update editable YAML state
   };
   
-  
-
   // Update handleTopologyNameChange function
   const handleTopologyNameChange = (event) => {
     const newTopologyName = event.target.value;
@@ -510,10 +512,17 @@ const App = () => {
       name: newTopologyName,
       topology: {
         nodes: nodes.reduce((acc, node) => {
-          // ...existing node reduction code...
+          const nodeConfig = {};
+          if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
+          if (node.data.image?.trim()) nodeConfig.image = node.data.image;
+          if (node.data.binds?.some(bind => bind.trim())) {
+            nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
+          }
+          if (node.data.mgmtIp?.trim()) nodeConfig['mgmt-ipv4'] = node.data.mgmtIp;
+          
+          acc[node.data.label] = nodeConfig;
           return acc;
         }, {}),
-        // ...existing topology sections...
         links: edges.map((edge) => ({
           endpoints: [
             `${nodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
@@ -523,8 +532,41 @@ const App = () => {
       }
     };
 
-    // Update YAML output immediately with new topology name
-    setYamlOutput(yaml.dump(yamlData));
+    // Add management section if enabled
+    if (showMgmt) {
+      yamlData.mgmt = {
+        network: mgmtNetwork,
+        "ipv4-subnet": ipv4Subnet,
+        ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
+      };
+    }
+
+    // Add kinds section if enabled
+    if (showKind && kinds.length > 0) {
+      yamlData.topology = yamlData.topology || {};
+      yamlData.topology.kinds = kinds.reduce((acc, kind) => {
+        if (kind.name) {
+          acc[kind.name] = {
+            ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
+            ...(kind.config.showImage && { image: kind.config.image }),
+            ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
+            ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
+          };
+        }
+        return acc;
+      }, {});
+    }
+
+    // Add defaults section if enabled
+    if (showDefault && defaultKind.trim()) {
+      yamlData.topology = yamlData.topology || {};
+      yamlData.topology.defaults = { kind: defaultKind };
+    }
+
+    // Generate and update both YAML states
+    const generatedYaml = yaml.dump(yamlData);
+    setYamlOutput(generatedYaml);
+    setEditableYaml(generatedYaml);
   };
 
   // Handle management inputs change
@@ -689,8 +731,47 @@ const App = () => {
 
   // Add the handleDeploy function near your other handlers
   const handleDeploy = () => {
-    // Add deployment logic here
-    console.log('Deploying topology...');
+    setIsDeployModalOpen(true);
+  };
+
+  const handleServerDeploy = async (serverIp) => {
+    if (!topologyName.trim()) {
+      alert("Please enter a topology name before deploying");
+      return;
+    }
+
+    setDeployLoading(prev => ({ ...prev, [serverIp]: true }));
+    try {
+      // First, create and download the YAML file locally
+      const fileName = `${topologyName}.yaml`;
+      const blob = new Blob([yamlOutput], { type: "text/yaml;charset=utf-8" });
+      
+      // Create FormData to send the file
+      const formData = new FormData();
+      formData.append('file', blob, fileName);
+      formData.append('serverIp', serverIp);
+
+      // Send the file to your backend server which will handle the SSH transfer
+      const response = await fetch(`http://${serverIp}:3001/api/containerlab/deploy`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to deploy topology to ${serverIp}`);
+      }
+
+      const result = await response.json();
+      console.log('Deployment successful:', result);
+      alert(`Successfully deployed ${fileName} to ${serverIp}`);
+
+    } catch (error) {
+      console.error('Deployment failed:', error);
+      alert(`Failed to deploy to ${serverIp}: ${error.message}`);
+    } finally {
+      setDeployLoading(prev => ({ ...prev, [serverIp]: false }));
+      setIsDeployModalOpen(false);
+    }
   };
 
   // Handle right-click on node to show context menu
@@ -771,7 +852,10 @@ const App = () => {
     setEdges([]);
     
     // Reset YAML
-    setYamlOutput(yaml.dump(DEFAULT_YAML));
+    setYamlOutput("");
+    setEditableYaml("");
+    setIsYamlValid(true);
+    setYamlParseError("");
   };
 
   // Update handleEdgeModalSubmit function
@@ -1415,6 +1499,70 @@ const App = () => {
               <h3>Warning</h3>
               <p>Please enter the topology name first</p>
               <button onClick={() => setShowWarning(false)}>OK</button>
+            </div>
+          </div>
+        )}
+        {isDeployModalOpen && (
+          <div className="modal">
+            <div className="modal-content" style={{ width: '80%', maxWidth: '800px' }}>
+              <h2>Select Server to Deploy</h2>
+              <div className="server-list">
+                <table className="server-table">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="border border-gray-200 px-4 py-2 text-left">Server Name</th>
+                      <th className="border border-gray-200 px-4 py-2 text-left">IP Address</th>
+                      <th className="border border-gray-200 px-4 py-2 text-left">Status</th>
+                      <th className="border border-gray-200 px-4 py-2 text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { name: 'clab-ire-1', ip: '10.83.12.71', status: 'active' },
+                      { name: 'clab-ire-2', ip: '10.83.12.72', status: 'active' },
+                      { name: 'clab-ire-3', ip: '10.83.12.73', status: 'active' }
+                    ].map((server) => (
+                      <tr key={server.name} className="hover:bg-gray-50">
+                        <td className="border border-gray-200 px-4 py-2">
+                          <div className="server-info">
+                            <Server className="server-icon" />
+                            <span className="server-name">{server.name}</span>
+                          </div>
+                        </td>
+                        <td className="border border-gray-200 px-4 py-2">{server.ip}</td>
+                        <td className="border border-gray-200 px-4 py-2">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            server.status === 'active' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {server.status}
+                          </span>
+                        </td>
+                        <td className="border border-gray-200 px-4 py-2">
+                          <button 
+                            onClick={() => handleServerDeploy(server.ip)}
+                            className="text-sm text-blue-600 hover:text-blue-800"
+                            disabled={deployLoading[server.ip]}
+                          >
+                            {deployLoading[server.ip] ? (
+                              <div className="flex items-center">
+                                <Loader2 className="animate-spin mr-2" size={18} />
+                                Deploying...
+                              </div>
+                            ) : (
+                              "Deploy"
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="actions mt-4">
+                <button onClick={() => setIsDeployModalOpen(false)}>Cancel</button>
+              </div>
             </div>
           </div>
         )}
