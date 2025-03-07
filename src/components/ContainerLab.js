@@ -6,6 +6,7 @@ import ReactFlow, {
   useEdgesState,
   applyNodeChanges,
   applyEdgeChanges,
+  ConnectionMode,
   Controls
 } from "react-flow-renderer";
 import Sidebar from "../Sidebar";
@@ -864,16 +865,21 @@ const App = () => {
       setEdgeModalWarning(true);
       return;
     }
-
+  
+    // Generate a unique ID for the edge that includes interfaces
+    const edgeId = isModifyingEdge 
+      ? newEdgeData.id 
+      : `edge_${newEdgeData.source}_${newEdgeData.target}_${sourceInterface}_${targetInterface}`;
+  
     const newEdge = {
       ...newEdgeData,
-      id: isModifyingEdge ? newEdgeData.id : `edge_${newEdgeData.source}_${newEdgeData.target}`,
+      id: edgeId,
       data: {
         sourceInterface,
         targetInterface
       }
     };
-
+  
     if (isModifyingEdge) {
       setEdges((eds) => {
         const updatedEdges = eds.map((edge) => 
@@ -884,13 +890,29 @@ const App = () => {
       });
       setIsModifyingEdge(false);
     } else {
+      // Check if this exact edge (same source, target, and interfaces) already exists
       setEdges((eds) => {
-        const updatedEdges = addEdge(newEdge, eds);
+        // Check for duplicate edge with same interfaces
+        const duplicateEdge = eds.find(edge => 
+          edge.source === newEdge.source && 
+          edge.target === newEdge.target &&
+          edge.data.sourceInterface === sourceInterface &&
+          edge.data.targetInterface === targetInterface
+        );
+        
+        if (duplicateEdge) {
+          // If a duplicate is found, don't add it
+          console.log("Duplicate edge not added:", newEdge);
+          return eds;
+        }
+        
+        // Otherwise add the new edge
+        const updatedEdges = [...eds, newEdge];
         updateYaml(nodes, updatedEdges);
         return updatedEdges;
       });
     }
-
+  
     setIsEdgeModalOpen(false);
     setSourceInterface("");
     setTargetInterface("");
@@ -1220,6 +1242,7 @@ const App = () => {
                   fitView
                   onNodeContextMenu={onNodeContextMenu}
                   onEdgeContextMenu={onEdgeContextMenu}
+                  connectionMode={ConnectionMode.LOOSE}
                 />
               </div>
               <div className="yaml-output">

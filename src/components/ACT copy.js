@@ -28,6 +28,10 @@ const ACT = () => {
   const [showVeos, setShowVeos] = useState(false);
   const [showCvp, setShowCvp] = useState(false);
   const [showGeneric, setShowGeneric] = useState(false);
+  const [isYamlValid, setIsYamlValid] = useState(true);
+  const [yamlParseError, setYamlParseError] = useState("");
+  const [isUpdatingFromYaml, setIsUpdatingFromYaml] = useState(false);
+  const [edgeContextMenu, setEdgeContextMenu] = useState(null);
 
   const [veosInputs, setVeosInputs] = useState({
     username: '',
@@ -50,7 +54,6 @@ const ACT = () => {
     version: ''
   });
 
-  // Add new state variables
   const [isEdgeModalOpen, setIsEdgeModalOpen] = useState(false);
   const [sourceInterface, setSourceInterface] = useState("");
   const [targetInterface, setTargetInterface] = useState("");
@@ -97,6 +100,16 @@ const ACT = () => {
     [nodes]
   );
 
+  // Add a handler for edge right-clicks
+  const onEdgeContextMenu = (event, edge) => {
+    event.preventDefault();
+    setEdgeContextMenu({
+      mouseX: event.clientX - 2,
+      mouseY: event.clientY - 4,
+      element: edge,
+    });
+  };
+  
   const onNodeContextMenu = (event, node) => {
     event.preventDefault();
     setContextMenu({
@@ -106,14 +119,47 @@ const ACT = () => {
     });
   };
 
+  // Add a handler to close the edge context menu
+  const handleEdgeContextMenuClose = () => {
+    setEdgeContextMenu(null);
+  };
+
   const handleContextMenuClose = () => {
     setContextMenu(null);
+  };
+
+  // Add a handler to remove the edge
+  const handleRemoveEdge = () => {
+    const edgeToRemove = edgeContextMenu.element;
+    setEdges((eds) => eds.filter((e) => e.id !== edgeToRemove.id));
+    setEdgeContextMenu(null);
   };
 
   const handleRemoveNode = () => {
     const nodeToRemove = contextMenu.element;
     setNodes((nds) => nds.filter((n) => n.id !== nodeToRemove.id));
     setContextMenu(null);
+  };
+
+  // Add a handler to modify the edge
+  const handleModifyEdge = () => {
+    const edgeToModify = edgeContextMenu.element;
+
+    // Find the source and target nodes to display their names
+    const sourceNode = nodes.find(node => node.id === edgeToModify.source);
+    const targetNode = nodes.find(node => node.id === edgeToModify.target);
+
+    // Set up the edge modal with existing data
+    setSourceInterface(edgeToModify.data?.sourceInterface || "");
+    setTargetInterface(edgeToModify.data?.targetInterface || "");
+    setNewEdgeData({
+      ...edgeToModify,
+      sourceNodeName: sourceNode?.data.label,
+      targetNodeName: targetNode?.data.label
+    });
+
+    setIsEdgeModalOpen(true);
+    setEdgeContextMenu(null);
   };
 
   const handleModifyNode = () => {
@@ -170,27 +216,45 @@ const ACT = () => {
       setEdgeModalWarning(true);
       return;
     }
-
-    const newEdge = {
-      ...newEdgeData,
-      id: `edge_${newEdgeData.source}_${newEdgeData.target}`,
-      data: {
-        sourceInterface,
-        targetInterface
-      }
-    };
-
-    setEdges((eds) => addEdge(newEdge, eds));
+  
+    // If we're modifying an existing edge
+    if (newEdgeData.id) {
+      setEdges((eds) => eds.map((edge) => 
+        edge.id === newEdgeData.id 
+          ? {
+              ...edge,
+              data: {
+                sourceInterface,
+                targetInterface
+              }
+            }
+          : edge
+      ));
+    } else {
+      // This is a new edge
+      const newEdge = {
+        ...newEdgeData,
+        id: `edge_${newEdgeData.source}_${newEdgeData.target}`,
+        data: {
+          sourceInterface,
+          targetInterface
+        }
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    }
+  
     setIsEdgeModalOpen(false);
     setSourceInterface("");
     setTargetInterface("");
     setNewEdgeData(null);
     setEdgeModalWarning(false);
-    updateYamlAct();
   };
 
-  // Update updateYamlAct to include links
-  const updateYamlAct = () => {
+  // Update YAML output based on diagram changes
+  const updateYamlFromDiagram = () => {
+    // Skip if we're currently updating the diagram from YAML
+    if (isUpdatingFromYaml) return;
+    
     let yamlSections = [];
     let nodesData = { nodes: [] };
 
@@ -241,13 +305,15 @@ const ACT = () => {
 
     // Add regular nodes
     nodes.forEach(node => {
-      nodesData.nodes.push({
-        [node.data.label]: {
-          ip_addr: node.data.ip,
-          node_type: node.data.type,
-          device_model: node.data.model
-        }
-      });
+      if (node.data && node.data.label) {
+        nodesData.nodes.push({
+          [node.data.label]: {
+            ip_addr: node.data.ip || "",
+            node_type: node.data.type || "",
+            device_model: node.data.model || ""
+          }
+        });
+      }
     });
 
     // Add nodes section if there are any nodes
@@ -258,22 +324,162 @@ const ACT = () => {
     // Add links section
     if (edges.length > 0) {
       const linksData = {
-        links: edges.map(edge => ({
-          connection: [
-            `${nodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
-            `${nodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
-          ]
-        }))
+        links: edges.map(edge => {
+          const sourceNode = nodes.find(n => n.id === edge.source);
+          const targetNode = nodes.find(n => n.id === edge.target);
+          if (sourceNode && targetNode && edge.data) {
+            return {
+              connection: [
+                `${sourceNode.data.label}:${edge.data.sourceInterface}`,
+                `${targetNode.data.label}:${edge.data.targetInterface}`
+              ]
+            };
+          }
+          return null;
+        }).filter(link => link !== null)
       };
-      yamlSections.push(yaml.dump(linksData));
+      
+      if (linksData.links.length > 0) {
+        yamlSections.push(yaml.dump(linksData));
+      }
     }
 
     setYamlOutput(yamlSections.join('\n'));
+    setIsYamlValid(true);
+    setYamlParseError("");
   };
 
-  // Update useEffect to watch for node changes
+  // Handle manual YAML edits by the user
+  const handleYamlChange = (event) => {
+    const newYaml = event.target.value;
+    setYamlOutput(newYaml);
+  
+    try {
+      // Parse the YAML input
+      const parsedYaml = yaml.load(newYaml);
+      
+      // Initialize arrays for new nodes and edges
+      let newNodes = [];
+      let nodeCounter = 1;
+      let positionCounter = 0;
+
+      // Handle global settings first
+      if (parsedYaml.veos) {
+        setShowVeos(true);
+        setVeosInputs({
+          username: parsedYaml.veos.username || '',
+          password: parsedYaml.veos.password || '',
+          version: parsedYaml.veos.version || ''
+        });
+      } else {
+        setShowVeos(false);
+      }
+
+      if (parsedYaml.cvp) {
+        setShowCvp(true);
+        setCvpInputs({
+          username: parsedYaml.cvp.username || '',
+          password: parsedYaml.cvp.password || '',
+          version: parsedYaml.cvp.version || '',
+          instance: parsedYaml.cvp.instance || '',
+          ipAddress: '',
+          autoConfig: false
+        });
+      } else {
+        setShowCvp(false);
+      }
+
+      if (parsedYaml.generic) {
+        setShowGeneric(true);
+        setGenericInputs({
+          username: parsedYaml.generic.username || '',
+          password: parsedYaml.generic.password || '',
+          version: parsedYaml.generic.version || ''
+        });
+      } else {
+        setShowGeneric(false);
+      }
+
+      // Handle nodes
+      if (parsedYaml.nodes) {
+        newNodes = parsedYaml.nodes.map((nodeObj) => {
+          const nodeName = Object.keys(nodeObj)[0];
+          const nodeData = nodeObj[nodeName];
+          
+          // Generate position in a grid layout
+          const columns = 3;
+          const rowHeight = 150;
+          const colWidth = 200;
+          const row = Math.floor(positionCounter / columns);
+          const col = positionCounter % columns;
+          positionCounter++;
+
+          // Special handling for CVP node
+          if (nodeName === "CVP" && nodeData.node_type === "cvp") {
+            setCvpInputs(prev => ({
+              ...prev,
+              ipAddress: nodeData.ip_addr || '',
+              autoConfig: nodeData.auto_configuration || false
+            }));
+          }
+
+          return {
+            id: `node_${nodeCounter++}`,
+            position: { x: 100 + col * colWidth, y: 100 + row * rowHeight },
+            data: {
+              label: nodeName,
+              ip: nodeData.ip_addr || "",
+              type: nodeData.node_type || "",
+              model: nodeData.device_model || ""
+            }
+          };
+        });
+      }
+
+      // Handle links
+      let newEdges = [];
+      if (parsedYaml.links) {
+        newEdges = parsedYaml.links.map((linkObj, index) => {
+          const [sourceNodeName, sourceInterface] = linkObj.connection[0].split(':');
+          const [targetNodeName, targetInterface] = linkObj.connection[1].split(':');
+
+          // Find corresponding nodes
+          const sourceNode = newNodes.find(n => n.data.label === sourceNodeName);
+          const targetNode = newNodes.find(n => n.data.label === targetNodeName);
+
+          if (sourceNode && targetNode) {
+            return {
+              id: `edge_${sourceNode.id}_${targetNode.id}_${sourceInterface}_${targetInterface}`,
+              source: sourceNode.id,
+              target: targetNode.id,
+              data: {
+                sourceInterface,
+                targetInterface
+              }
+            };
+          }
+          return null;
+        }).filter(edge => edge !== null);
+      }
+
+      // Update state with new nodes and edges
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setIsYamlValid(true);
+      setYamlParseError('');
+      
+    } catch (error) {
+      console.error('Failed to parse YAML:', error);
+      setIsYamlValid(false);
+      setYamlParseError(`Error parsing YAML: ${error.message}`);
+      // Still keep the YAML text updated
+      setYamlOutput(newYaml);
+    }
+  };
+
+  // Update YAML when topology changes
   useEffect(() => {
-    updateYamlAct();
+    updateYamlFromDiagram();
   }, [
     showVeos, showCvp, showGeneric,
     veosInputs, cvpInputs, genericInputs,
@@ -353,6 +559,18 @@ const ACT = () => {
       password: '',
       version: ''
     });
+  };
+
+  // Add apply YAML changes button handler
+  const handleApplyYaml = () => {
+    try {
+      updateYamlFromDiagram();
+      setIsYamlValid(true);
+      setYamlParseError("");
+    } catch (error) {
+      setIsYamlValid(false);
+      setYamlParseError(`Error applying YAML: ${error.message}`);
+    }
   };
 
   return (
@@ -528,6 +746,7 @@ const ACT = () => {
           onDrop={onDrop}
           onDragOver={onDragOver}
           onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
           fitView
         >
           <Controls />
@@ -535,10 +754,27 @@ const ACT = () => {
       </div>
       <div className="yaml-output">
         <div className="yaml-header-act">
-          <h3>YAML Output</h3>
-          <button className="download-button-act" onClick={handleDownloadYaml} disabled={!yamlOutput.trim()}>Download YAML</button>
+          <h3>YAML Editor</h3>
+          <div className="yaml-actions">
+            {/* <button className="yaml-button" onClick={handleApplyYaml} disabled={!yamlOutput.trim()}>
+              Apply Changes
+            </button> */}
+            <button className="download-button-act" onClick={handleDownloadYaml} disabled={!yamlOutput.trim()}>
+              Download YAML
+            </button>
+          </div>
         </div>
-        <pre>{yamlOutput}</pre>
+        {!isYamlValid && (
+          <div className="yaml-error-message">
+            {yamlParseError}
+          </div>
+        )}
+        <textarea
+          className={`yaml-editor ${!isYamlValid ? 'yaml-error' : ''}`}
+          value={yamlOutput}
+          onChange={handleYamlChange}
+          spellCheck="false"
+        />
       </div>
 
       {isModalOpen && (
@@ -612,7 +848,7 @@ const ACT = () => {
             )}
             <div className="form-content">
               <div className="input-group-act">
-                <label>{newEdgeData.sourceNodeName} Interface:</label>
+                <label>{newEdgeData?.sourceNodeName} Interface:</label>
                 <input
                   type="text"
                   value={sourceInterface}
@@ -622,7 +858,7 @@ const ACT = () => {
                 />
               </div>
               <div className="input-group-act">
-                <label>{newEdgeData.targetNodeName} Interface:</label>
+                <label>{newEdgeData?.targetNodeName} Interface:</label>
                 <input
                   type="text"
                   value={targetInterface}
@@ -661,6 +897,24 @@ const ACT = () => {
           <button onClick={handleModifyNode}>Modify</button>
           <button onClick={handleRemoveNode}>Remove Node</button>
           <button onClick={handleContextMenuClose}>Cancel</button>
+        </div>
+      )}
+
+      {edgeContextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'absolute',
+            top: edgeContextMenu.mouseY,
+            left: edgeContextMenu.mouseX,
+            backgroundColor: 'white',
+            boxShadow: '0px 0px 5px rgba(0,0,0,0.3)',
+            zIndex: 1000,
+          }}
+        >
+          <button onClick={handleModifyEdge}>Modify</button>
+          <button onClick={handleRemoveEdge}>Remove Edge</button>
+          <button onClick={handleEdgeContextMenuClose}>Cancel</button>
         </div>
       )}
     </div>

@@ -31,6 +31,7 @@ const ACT = () => {
   const [isYamlValid, setIsYamlValid] = useState(true);
   const [yamlParseError, setYamlParseError] = useState("");
   const [isUpdatingFromYaml, setIsUpdatingFromYaml] = useState(false);
+  const [edgeContextMenu, setEdgeContextMenu] = useState(null);
 
   const [veosInputs, setVeosInputs] = useState({
     username: '',
@@ -99,6 +100,16 @@ const ACT = () => {
     [nodes]
   );
 
+  // Add a handler for edge right-clicks
+  const onEdgeContextMenu = (event, edge) => {
+    event.preventDefault();
+    setEdgeContextMenu({
+      mouseX: event.clientX - 2,
+      mouseY: event.clientY - 4,
+      element: edge,
+    });
+  };
+  
   const onNodeContextMenu = (event, node) => {
     event.preventDefault();
     setContextMenu({
@@ -108,14 +119,47 @@ const ACT = () => {
     });
   };
 
+  // Add a handler to close the edge context menu
+  const handleEdgeContextMenuClose = () => {
+    setEdgeContextMenu(null);
+  };
+
   const handleContextMenuClose = () => {
     setContextMenu(null);
+  };
+
+  // Add a handler to remove the edge
+  const handleRemoveEdge = () => {
+    const edgeToRemove = edgeContextMenu.element;
+    setEdges((eds) => eds.filter((e) => e.id !== edgeToRemove.id));
+    setEdgeContextMenu(null);
   };
 
   const handleRemoveNode = () => {
     const nodeToRemove = contextMenu.element;
     setNodes((nds) => nds.filter((n) => n.id !== nodeToRemove.id));
     setContextMenu(null);
+  };
+
+  // Add a handler to modify the edge
+  const handleModifyEdge = () => {
+    const edgeToModify = edgeContextMenu.element;
+
+    // Find the source and target nodes to display their names
+    const sourceNode = nodes.find(node => node.id === edgeToModify.source);
+    const targetNode = nodes.find(node => node.id === edgeToModify.target);
+
+    // Set up the edge modal with existing data
+    setSourceInterface(edgeToModify.data?.sourceInterface || "");
+    setTargetInterface(edgeToModify.data?.targetInterface || "");
+    setNewEdgeData({
+      ...edgeToModify,
+      sourceNodeName: sourceNode?.data.label,
+      targetNodeName: targetNode?.data.label
+    });
+
+    setIsEdgeModalOpen(true);
+    setEdgeContextMenu(null);
   };
 
   const handleModifyNode = () => {
@@ -172,17 +216,33 @@ const ACT = () => {
       setEdgeModalWarning(true);
       return;
     }
-
-    const newEdge = {
-      ...newEdgeData,
-      id: `edge_${newEdgeData.source}_${newEdgeData.target}`,
-      data: {
-        sourceInterface,
-        targetInterface
-      }
-    };
-
-    setEdges((eds) => addEdge(newEdge, eds));
+  
+    // If we're modifying an existing edge
+    if (newEdgeData.id) {
+      setEdges((eds) => eds.map((edge) => 
+        edge.id === newEdgeData.id 
+          ? {
+              ...edge,
+              data: {
+                sourceInterface,
+                targetInterface
+              }
+            }
+          : edge
+      ));
+    } else {
+      // This is a new edge
+      const newEdge = {
+        ...newEdgeData,
+        id: `edge_${newEdgeData.source}_${newEdgeData.target}`,
+        data: {
+          sourceInterface,
+          targetInterface
+        }
+      };
+      setEdges((eds) => addEdge(newEdge, eds));
+    }
+  
     setIsEdgeModalOpen(false);
     setSourceInterface("");
     setTargetInterface("");
@@ -290,201 +350,160 @@ const ACT = () => {
   };
 
   // Handle manual YAML edits by the user
-  const handleYamlChange = (e) => {
-    const newYaml = e.target.value;
+  const handleYamlChange = (event) => {
+    const newYaml = event.target.value;
     setYamlOutput(newYaml);
-    
-    // Validate and parse new YAML
-    // try {
-    updateDiagramFromYaml(newYaml);
-    // setIsYamlValid(true);
-    // setYamlParseError("");
-    // } catch (error) {
-    //   setIsYamlValid(false);
-    //   setYamlParseError(`Error parsing YAML: ${error.message}`);
-    // }
-  };
-
-  // Update diagram based on YAML input
-  const updateDiagramFromYaml = (yamlText) => {
-    if (!yamlText.trim()) {
-      // If YAML is empty, just reset the topology
-      handleReset();
-      return;
-    }
-
-    setIsUpdatingFromYaml(true);
-
+    setIsUpdatingFromYaml(true);  // Set flag to indicate manual YAML editing
+  
     try {
-      // Split the YAML into sections by document separator (---)
-      const yamlSections = yamlText.split(/---+/).filter(section => section.trim());
+      if (newYaml.trim() === '') {
+        // Handle empty YAML case
+        setNodes([]);
+        setEdges([]);
+        setIsYamlValid(true);
+        setYamlParseError('');
+        return;
+      }
+
+      // Parse the YAML input
+      const parsedYaml = yaml.load(newYaml);
       
-      // Initialize data holders
+      // Initialize arrays for new nodes and edges
       let newNodes = [];
-      let newEdges = [];
-      let parsedVeos = null;
-      let parsedCvp = null;
-      let parsedGeneric = null;
-      let cvpNode = null;
       let nodeCounter = 1;
       let positionCounter = 0;
-      
-      // Parse each section
-      for (let section of yamlSections) {
-        let parsedSection;
-        try {
-          parsedSection = yaml.load(section);
-        } catch (error) {
-          console.error("Failed to parse YAML section:", error);
-          throw new Error(`Invalid YAML syntax in section: ${section.substring(0, 50)}...`);
-        }
-        
-        // Skip empty sections
-        if (!parsedSection) continue;
-        
-        // Handle global settings
-        if (parsedSection.veos) {
-          parsedVeos = parsedSection.veos;
-        } else if (parsedSection.cvp) {
-          parsedCvp = parsedSection.cvp;
-        } else if (parsedSection.generic) {
-          parsedGeneric = parsedSection.generic;
-        }
-        
-        // Handle nodes
-        if (parsedSection.nodes) {
-          parsedSection.nodes.forEach(nodeObj => {
-            const nodeName = Object.keys(nodeObj)[0];
-            const nodeData = nodeObj[nodeName];
-            
-            // Generate node positions in a grid layout
-            const columns = 3;
-            const rowHeight = 150;
-            const colWidth = 200;
-            const row = Math.floor(positionCounter / columns);
-            const col = positionCounter % columns;
-            positionCounter++;
-            
-            // Check if this is a CVP node
-            if (nodeName === "CVP" && nodeData.node_type === "cvp") {
-              cvpNode = nodeData;
-            } else {
-              // Regular node
-              newNodes.push({
-                id: `node_${nodeCounter++}`,
-                position: { x: 100 + col * colWidth, y: 100 + row * rowHeight },
-                data: {
-                  label: nodeName,
-                  ip: nodeData.ip_addr || "",
-                  type: nodeData.node_type || "",
-                  model: nodeData.device_model || ""
-                }
-              });
-            }
-          });
-        }
-        
-        // Handle links
-        if (parsedSection.links) {
-          parsedSection.links.forEach((linkObj, index) => {
-            if (linkObj.connection && linkObj.connection.length === 2) {
-              // Parse node and interface names
-              const sourceConn = linkObj.connection[0].split(':');
-              const targetConn = linkObj.connection[1].split(':');
-              
-              if (sourceConn.length !== 2 || targetConn.length !== 2) {
-                throw new Error(`Invalid connection format in link ${index}: ${linkObj.connection}`);
-              }
-              
-              const sourceNodeName = sourceConn[0];
-              const sourceInterface = sourceConn[1];
-              const targetNodeName = targetConn[0];
-              const targetInterface = targetConn[1];
-              
-              // Find node IDs by name
-              const sourceNode = newNodes.find(n => n.data.label === sourceNodeName);
-              const targetNode = newNodes.find(n => n.data.label === targetNodeName);
-              
-              if (!sourceNode || !targetNode) {
-                console.warn(`Cannot create edge: missing node ${!sourceNode ? sourceNodeName : targetNodeName}`);
-                return;
-              }
-              
-              // Create the edge
-              newEdges.push({
-                id: `edge_${sourceNode.id}_${targetNode.id}`,
-                source: sourceNode.id,
-                target: targetNode.id,
-                data: {
-                  sourceInterface,
-                  targetInterface
-                }
-              });
-            }
-          });
-        }
-      }
-      
-      // Update component state with parsed data
-      setNodes(newNodes);
-      setEdges(newEdges);
-      
-      // Update global settings
-      if (parsedVeos) {
+
+      // Handle global settings first
+      if (parsedYaml.veos) {
         setShowVeos(true);
         setVeosInputs({
-          username: parsedVeos.username || '',
-          password: parsedVeos.password || '',
-          version: parsedVeos.version || ''
+          username: parsedYaml.veos.username || '',
+          password: parsedYaml.veos.password || '',
+          version: parsedYaml.veos.version || ''
         });
       } else {
         setShowVeos(false);
-        setVeosInputs({ username: '', password: '', version: '' });
       }
-      
-      if (parsedCvp || cvpNode) {
+
+      if (parsedYaml.cvp) {
         setShowCvp(true);
         setCvpInputs({
-          username: parsedCvp?.username || '',
-          password: parsedCvp?.password || '',
-          version: parsedCvp?.version || '',
-          instance: parsedCvp?.instance || '',
-          ipAddress: cvpNode?.ip_addr || '',
-          autoConfig: cvpNode?.auto_configuration || false
+          username: parsedYaml.cvp.username || '',
+          password: parsedYaml.cvp.password || '',
+          version: parsedYaml.cvp.version || '',
+          instance: parsedYaml.cvp.instance || '',
+          ipAddress: '',
+          autoConfig: false
         });
       } else {
         setShowCvp(false);
-        setCvpInputs({ username: '', password: '', version: '', instance: '', ipAddress: '', autoConfig: false });
       }
-      
-      if (parsedGeneric) {
+
+      if (parsedYaml.generic) {
         setShowGeneric(true);
         setGenericInputs({
-          username: parsedGeneric.username || '',
-          password: parsedGeneric.password || '',
-          version: parsedGeneric.version || ''
+          username: parsedYaml.generic.username || '',
+          password: parsedYaml.generic.password || '',
+          version: parsedYaml.generic.version || ''
         });
       } else {
         setShowGeneric(false);
-        setGenericInputs({ username: '', password: '', version: '' });
       }
+
+      // Handle nodes
+      if (parsedYaml.nodes) {
+        newNodes = parsedYaml.nodes.map((nodeObj) => {
+          const nodeName = Object.keys(nodeObj)[0];
+          const nodeData = nodeObj[nodeName];
+          
+          // Generate position in a grid layout
+          const columns = 3;
+          const rowHeight = 150;
+          const colWidth = 200;
+          const row = Math.floor(positionCounter / columns);
+          const col = positionCounter % columns;
+          positionCounter++;
+
+          // Special handling for CVP node
+          if (nodeName === "CVP" && nodeData.node_type === "cvp") {
+            setCvpInputs(prev => ({
+              ...prev,
+              ipAddress: nodeData.ip_addr || '',
+              autoConfig: nodeData.auto_configuration || false
+            }));
+          }
+
+          return {
+            id: `node_${nodeCounter++}`,
+            position: { x: 100 + col * colWidth, y: 100 + row * rowHeight },
+            data: {
+              label: nodeName,
+              ip: nodeData.ip_addr || "",
+              type: nodeData.node_type || "",
+              model: nodeData.device_model || ""
+            }
+          };
+        });
+      }
+
+      // Handle links
+      let newEdges = [];
+      if (parsedYaml.links) {
+        newEdges = parsedYaml.links.map((linkObj, index) => {
+          const [sourceNodeName, sourceInterface] = linkObj.connection[0].split(':');
+          const [targetNodeName, targetInterface] = linkObj.connection[1].split(':');
+
+          // Find corresponding nodes
+          const sourceNode = newNodes.find(n => n.data.label === sourceNodeName);
+          const targetNode = newNodes.find(n => n.data.label === targetNodeName);
+
+          if (sourceNode && targetNode) {
+            return {
+              id: `edge_${sourceNode.id}_${targetNode.id}_${sourceInterface}_${targetInterface}`,
+              source: sourceNode.id,
+              target: targetNode.id,
+              data: {
+                sourceInterface,
+                targetInterface
+              }
+            };
+          }
+          return null;
+        }).filter(edge => edge !== null);
+      }
+
+      // Update state with new nodes and edges
+      setNodes(newNodes);
+      setEdges(newEdges);
+      setIsYamlValid(true);
+      setYamlParseError('');
       
     } catch (error) {
-      console.error("Failed to update diagram from YAML:", error);
-      throw error;
-    } finally {
-      setIsUpdatingFromYaml(false);
+      console.error('Failed to parse YAML:', error);
+      setIsYamlValid(false);
+      setYamlParseError(`Error parsing YAML: ${error.message}`);
+      // Still keep the YAML text updated
+      setYamlOutput(newYaml);
     }
   };
 
   // Update YAML when topology changes
   useEffect(() => {
-    updateYamlFromDiagram();
+    if (!isUpdatingFromYaml) {  // Only update if not manually editing
+      updateYamlFromDiagram();
+    }
   }, [
     showVeos, showCvp, showGeneric,
     veosInputs, cvpInputs, genericInputs,
-    nodes, edges
+    nodes, edges,
+    isUpdatingFromYaml  // Add this to dependencies
   ]);
+
+  // Reset isUpdatingFromYaml flag when focus is lost
+  const handleYamlBlur = () => {
+    setIsUpdatingFromYaml(false);
+    updateYamlFromDiagram();  // Update diagram when focus is lost
+  };
 
   const handleVeosCheckbox = (e) => {
     setShowVeos(e.target.checked);
@@ -564,7 +583,7 @@ const ACT = () => {
   // Add apply YAML changes button handler
   const handleApplyYaml = () => {
     try {
-      updateDiagramFromYaml(yamlOutput);
+      updateYamlFromDiagram();
       setIsYamlValid(true);
       setYamlParseError("");
     } catch (error) {
@@ -746,6 +765,7 @@ const ACT = () => {
           onDrop={onDrop}
           onDragOver={onDragOver}
           onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
           fitView
         >
           <Controls />
@@ -772,6 +792,7 @@ const ACT = () => {
           className={`yaml-editor ${!isYamlValid ? 'yaml-error' : ''}`}
           value={yamlOutput}
           onChange={handleYamlChange}
+          onBlur={handleYamlBlur}
           spellCheck="false"
         />
       </div>
@@ -896,6 +917,24 @@ const ACT = () => {
           <button onClick={handleModifyNode}>Modify</button>
           <button onClick={handleRemoveNode}>Remove Node</button>
           <button onClick={handleContextMenuClose}>Cancel</button>
+        </div>
+      )}
+
+      {edgeContextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'absolute',
+            top: edgeContextMenu.mouseY,
+            left: edgeContextMenu.mouseX,
+            backgroundColor: 'white',
+            boxShadow: '0px 0px 5px rgba(0,0,0,0.3)',
+            zIndex: 1000,
+          }}
+        >
+          <button onClick={handleModifyEdge}>Modify</button>
+          <button onClick={handleRemoveEdge}>Remove Edge</button>
+          <button onClick={handleEdgeContextMenuClose}>Cancel</button>
         </div>
       )}
     </div>
