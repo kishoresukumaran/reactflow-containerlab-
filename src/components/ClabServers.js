@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Server } from 'lucide-react';
+import LogModal from './LogModal';
 
 const ClabServers = () => {
   const [topologies, setTopologies] = useState({});
@@ -7,6 +8,9 @@ const ClabServers = () => {
   const [error, setError] = useState({});
   const [expanded, setExpanded] = useState({});
   const [selectedServer, setSelectedServer] = useState(null);
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [operationLogs, setOperationLogs] = useState('');
+  const [operationTitle, setOperationTitle] = useState('');
 
   const fetchTopologies = async (serverIp) => {
     setLoading(prev => ({ ...prev, [serverIp]: true }));
@@ -173,18 +177,164 @@ const ClabServers = () => {
                     <div className="topology-actions mr-4">
                       <button 
                         className="action-button reconfigure-button"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          // Add reconfigure handler
+                          if (window.confirm('Are you sure you want to reconfigure this topology?')) {
+                            try {
+                              setOperationTitle('Reconfiguring Topology');
+                              setOperationLogs('');
+                              setShowLogModal(true);
+
+                              const response = await fetch(`http://${selectedServer}:3001/api/containerlab/reconfigure`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  serverIp: selectedServer,
+                                  topoFile: topology.labPath
+                                }),
+                              });
+
+                              const reader = response.body.getReader();
+                              const decoder = new TextDecoder();
+                              let finalJsonStr = '';
+                              let buffer = '';
+
+                              while (true) {
+                                const { value, done } = await reader.read();
+                                if (done) break;
+                                
+                                const text = decoder.decode(value);
+                                buffer += text;
+
+                                // Split by newlines to process each line
+                                const lines = buffer.split('\n');
+                                // Keep the last potentially incomplete line in the buffer
+                                buffer = lines.pop() || '';
+
+                                for (const line of lines) {
+                                  try {
+                                    // Try to parse as JSON to see if it's the final message
+                                    const parsed = JSON.parse(line);
+                                    finalJsonStr = line;
+                                  } catch {
+                                    // If not JSON, it's a log line
+                                    setOperationLogs(prevLogs => prevLogs + line + '\n');
+                                  }
+                                }
+                              }
+
+                              // Process any remaining buffer
+                              if (buffer) {
+                                try {
+                                  JSON.parse(buffer);
+                                  finalJsonStr = buffer;
+                                } catch {
+                                  setOperationLogs(prevLogs => prevLogs + buffer + '\n');
+                                }
+                              }
+
+                              // Parse the final JSON message
+                              const result = JSON.parse(finalJsonStr);
+                              
+                              if (result.success) {
+                                setTimeout(() => {
+                                  setShowLogModal(false);
+                                  alert('Topology reconfigured successfully');
+                                  fetchTopologies(selectedServer);
+                                }, 2000);
+                              } else {
+                                alert(`Failed to reconfigure topology: ${result.error}`);
+                              }
+                            } catch (error) {
+                              console.error('Error reconfiguring topology:', error);
+                              alert(`Error reconfiguring topology: ${error.message}`);
+                              setShowLogModal(false);
+                            }
+                          }
                         }}
                       >
                         Reconfigure
                       </button>
                       <button 
                         className="action-button destroy-button"
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          // Add destroy handler
+                          if (window.confirm('Are you sure you want to destroy this topology?')) {
+                            try {
+                              setOperationTitle('Destroying Topology');
+                              setOperationLogs('');
+                              setShowLogModal(true);
+
+                              const response = await fetch(`http://${selectedServer}:3001/api/containerlab/destroy`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                  serverIp: selectedServer,
+                                  topoFile: topology.labPath
+                                }),
+                              });
+
+                              const reader = response.body.getReader();
+                              const decoder = new TextDecoder();
+                              let finalJsonStr = '';
+                              let buffer = '';
+
+                              while (true) {
+                                const { value, done } = await reader.read();
+                                if (done) break;
+                                
+                                const text = decoder.decode(value);
+                                buffer += text;
+
+                                // Split by newlines to process each line
+                                const lines = buffer.split('\n');
+                                // Keep the last potentially incomplete line in the buffer
+                                buffer = lines.pop() || '';
+
+                                for (const line of lines) {
+                                  try {
+                                    // Try to parse as JSON to see if it's the final message
+                                    const parsed = JSON.parse(line);
+                                    finalJsonStr = line;
+                                  } catch {
+                                    // If not JSON, it's a log line
+                                    setOperationLogs(prevLogs => prevLogs + line + '\n');
+                                  }
+                                }
+                              }
+
+                              // Process any remaining buffer
+                              if (buffer) {
+                                try {
+                                  JSON.parse(buffer);
+                                  finalJsonStr = buffer;
+                                } catch {
+                                  setOperationLogs(prevLogs => prevLogs + buffer + '\n');
+                                }
+                              }
+
+                              // Parse the final JSON message
+                              const result = JSON.parse(finalJsonStr);
+                              
+                              if (result.success) {
+                                setTimeout(() => {
+                                  setShowLogModal(false);
+                                  alert('Topology destroyed successfully');
+                                  fetchTopologies(selectedServer);
+                                }, 2000);
+                              } else {
+                                alert(`Failed to destroy topology: ${result.error}`);
+                              }
+                            } catch (error) {
+                              console.error('Error destroying topology:', error);
+                              alert(`Error destroying topology: ${error.message}`);
+                              setShowLogModal(false);
+                            }
+                          }
                         }}
                       >
                         Destroy
@@ -255,6 +405,12 @@ const ClabServers = () => {
           )}
         </div>
       )}
+      <LogModal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        logs={operationLogs}
+        title={operationTitle}
+      />
     </div>
   );
 };

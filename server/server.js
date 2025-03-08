@@ -172,6 +172,162 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// Add destroy topology endpoint
+app.post('/api/containerlab/destroy', async (req, res) => {
+    try {
+        const { serverIp, topoFile } = req.body;
+        
+        if (!serverIp || !topoFile) {
+            return res.status(400).json({ 
+                error: 'Server IP and topology file path are required' 
+            });
+        }
+
+        // Set headers for streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const ssh = new NodeSSH();
+        
+        // Connect to the remote server
+        try {
+            res.write('Connecting to server...\n');
+            await ssh.connect({
+                ...sshConfig,
+                host: serverIp,
+            });
+            res.write('Connected successfully\n');
+        } catch (error) {
+            res.write(`Failed to connect to server: ${error.message}\n`);
+            res.end();
+            return;
+        }
+
+        try {
+            // Execute containerlab destroy command
+            res.write('Executing containerlab destroy command...\n');
+            const destroyCommand = `clab destroy --topo ${topoFile}`;
+            const result = await ssh.execCommand(destroyCommand, {
+                cwd: '/opt',
+                onStdout: (chunk) => {
+                    res.write(`stdout: ${chunk.toString()}\n`);
+                },
+                onStderr: (chunk) => {
+                    res.write(`stderr: ${chunk.toString()}\n`);
+                }
+            });
+
+            if (result.code === 0) {
+                res.write('Operation completed successfully\n');
+                res.end(JSON.stringify({
+                    success: true,
+                    message: 'Topology destroyed successfully'
+                }));
+            } else {
+                res.write(`Operation failed: ${result.stderr}\n`);
+                res.end(JSON.stringify({
+                    success: false,
+                    message: 'Destroy operation failed',
+                    error: result.stderr
+                }));
+            }
+
+        } catch (error) {
+            res.write(`Operation failed: ${error.message}\n`);
+            res.end(JSON.stringify({
+                error: `Destroy operation failed: ${error.message}`
+            }));
+        } finally {
+            ssh.dispose();
+        }
+
+    } catch (error) {
+        res.write(`Server error: ${error.message}\n`);
+        res.end(JSON.stringify({
+            error: `Server error: ${error.message}`
+        }));
+    }
+});
+
+// Add reconfigure topology endpoint
+app.post('/api/containerlab/reconfigure', async (req, res) => {
+    try {
+        const { serverIp, topoFile } = req.body;
+        
+        if (!serverIp || !topoFile) {
+            return res.status(400).json({ 
+                error: 'Server IP and topology file path are required' 
+            });
+        }
+
+        // Set headers for streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        const ssh = new NodeSSH();
+        
+        // Connect to the remote server
+        try {
+            res.write('Connecting to server...\n');
+            await ssh.connect({
+                ...sshConfig,
+                host: serverIp,
+            });
+            res.write('Connected successfully\n');
+        } catch (error) {
+            res.write(`Failed to connect to server: ${error.message}\n`);
+            res.end();
+            return;
+        }
+
+        try {
+            // Execute containerlab reconfigure command
+            res.write('Executing containerlab reconfigure command...\n');
+            const reconfigureCommand = `clab deploy --topo ${topoFile} --reconfigure`;
+            const result = await ssh.execCommand(reconfigureCommand, {
+                cwd: '/opt',
+                onStdout: (chunk) => {
+                    res.write(`stdout: ${chunk.toString()}\n`);
+                },
+                onStderr: (chunk) => {
+                    res.write(`stderr: ${chunk.toString()}\n`);
+                }
+            });
+
+            if (result.code === 0) {
+                res.write('Operation completed successfully\n');
+                res.end(JSON.stringify({
+                    success: true,
+                    message: 'Topology reconfigured successfully'
+                }));
+            } else {
+                res.write(`Operation failed: ${result.stderr}\n`);
+                res.end(JSON.stringify({
+                    success: false,
+                    message: 'Reconfigure operation failed',
+                    error: result.stderr
+                }));
+            }
+
+        } catch (error) {
+            res.write(`Operation failed: ${error.message}\n`);
+            res.end(JSON.stringify({
+                error: `Reconfigure operation failed: ${error.message}`
+            }));
+        } finally {
+            ssh.dispose();
+        }
+
+    } catch (error) {
+        res.write(`Server error: ${error.message}\n`);
+        res.end(JSON.stringify({
+            error: `Server error: ${error.message}`
+        }));
+    }
+});
+
 // Create uploads directory on server start
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
