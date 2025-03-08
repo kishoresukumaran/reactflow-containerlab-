@@ -1520,4 +1520,24 @@ button[type="submit"]:active {
   border-left: 4px solid #d93025;
 }
 
+.image-select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  cursor: pointer;
+  margin-bottom: 15px;
+}
 
+.image-select:focus {
+  outline: none;
+  border-color: #072452;
+  box-shadow: 0 0 0 2px rgba(7, 36, 82, 0.1);
+}
+
+.image-select option {
+  padding: 8px;
+  font-size: 14px;
+}

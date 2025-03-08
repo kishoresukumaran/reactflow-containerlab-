@@ -159,6 +159,23 @@ const App = () => {
   const [selectedServer, setSelectedServer] = useState(null);
   const [deployLoading, setDeployLoading] = useState({});
 
+  // Add this near your other state declarations
+  const imageOptions = [
+    { value: "ceos:4.31.4M", label: "cEOS 4.31.4M" },
+    { value: "ceos:4.30.5M", label: "cEOS 4.30.5M" },
+    { value: "ceos:4.29.5M", label: "cEOS 4.29.5M" },
+    { value: "cvp:2023.3.0", label: "CVP 2023.3.0" },
+    { value: "cvp:2023.2.0", label: "CVP 2023.2.0" },
+    { value: "host:ubuntu", label: "Ubuntu Host" }
+  ];
+
+  // Add this near your other state declarations and imageOptions
+  const kindOptions = [
+    { value: "ceos", label: "cEOS" },
+    { value: "linux", label: "Linux" },
+    { value: "veos", label: "vEOS" }
+  ];
+
   const handleModeChange = (newMode) => {
     setMode(newMode);
     // Reset states when switching modes
@@ -1184,12 +1201,18 @@ const App = () => {
                     {kinds.map((kind, index) => (
                       <div key={index} className="kind-input-group">
                         <label htmlFor={`kind-name-${index}`}>Kind Name</label>
-                        <input
+                        <select
                           id={`kind-name-${index}`}
-                          type="text"
                           value={kind.name}
                           onChange={(e) => handleKindNameChange(index, e.target.value)}
-                        />
+                        >
+                          <option value="">Select a kind</option>
+                          {kindOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                         <button onClick={() => {
                           setShowKindModal(true);
                           setCurrentKindIndex(index);
@@ -1212,13 +1235,19 @@ const App = () => {
                 {showDefault && (
                   <div className="default-input-group">
                     <label htmlFor="default-kind">Default Kind:</label>
-                    <input
+                    <select
                       id="default-kind"
-                      type="text"
                       value={defaultKind}
                       onChange={handleDefaultKindChange}
-                      placeholder="e.g., ceos"
-                    />
+                      className="image-select"
+                    >
+                      <option value="">Select a kind</option>
+                      {kindOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 )}
                 <button className="reset-button" onClick={handleReset}>
@@ -1290,22 +1319,41 @@ const App = () => {
                 </div>
                 <div className="input-group">
                   <label>Kind: *</label>
-                  <input
-                    type="text"
+                  <select
                     value={nodeKind}
-                    placeholder="e.g., ceos"
-                    onChange={handleNodeKindChange}
-                    className={nodeModalWarning && !nodeKind.trim() ? 'input-error' : ''}
-                  />
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setNodeKind(newValue);
+                      handleNodeKindChange({ target: { value: newValue } });
+                    }}
+                    className={`image-select ${nodeModalWarning && !nodeKind.trim() ? 'input-error' : ''}`}
+                  >
+                    <option value="">Select a kind</option>
+                    {kindOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="input-group">
                   <label>Image:</label>
-                  <input
-                    type="text"
+                  <select
                     value={nodeImage}
-                    onChange={handleNodeImageChange}
-                    placeholder="e.g., ceos:4.31.4M"
-                  />
+                    onChange={(e) => {
+                      const newValue = e.target.value;
+                      setNodeImage(newValue);
+                      handleNodeImageChange({ target: { value: newValue } });
+                    }}
+                    className="image-select"
+                  >
+                    <option value="">Select an image</option>
+                    {imageOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="input-group">
                   <label>Binds:</label>
@@ -1374,12 +1422,18 @@ const App = () => {
                   Image
                 </label>
                 {kinds[currentKindIndex].config.showImage && (
-                  <input
-                    type="text"
+                  <select
                     value={kinds[currentKindIndex].config.image}
                     onChange={(e) => handleKindConfigChange(currentKindIndex, 'image', e.target.value)}
-                    placeholder="Enter image name"
-                  />
+                    className="image-select"
+                  >
+                    <option value="">Select an image</option>
+                    {imageOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
 
