@@ -75,11 +75,9 @@ const MainApp = ({ user, onLogout }) => {
         {/* Display user info and logout button */}
         <div className="user-info">
           <div className='user-name'>
-            <span>Welcome, {user?.name || 'User'}!</span>
+            Welcome, {user?.displayName || user?.username}!
           </div>
-          <div className='logout-button'>
-            <button onClick={onLogout}>Logout</button>
-          </div>
+          <button onClick={onLogout}>Logout</button>
         </div>
       </div>
 

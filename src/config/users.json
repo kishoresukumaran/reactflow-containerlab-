@@ -1,0 +1,22 @@
+{
+  "users": [
+    {
+      "username": "admin",
+      "password": "arastra",
+      "role": "admin",
+      "displayName": "Admin"
+    },
+    {
+      "username": "user1",
+      "password": "passwor",
+      "role": "user",
+      "displayName": "Test User"
+    },
+    {
+      "username": "kishore",
+      "password": "arastra",
+      "role": "user",
+      "displayName": "Test User"
+    }
+  ]
+} 

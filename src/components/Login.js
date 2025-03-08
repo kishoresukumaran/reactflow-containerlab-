@@ -1,22 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authenticateUser } from '../utils/auth';
+import '../styles.css';
 
 const Login = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
-    // Mock authentication logic
-    if (email === 'admin@arista.com' && password === 'arastra') {
-      const userInfo = { name: 'admin', email }; // Mock user info
-      onLogin(userInfo); // Pass user info to App.js
-      navigate('/'); // Redirect to the main app
+    const result = authenticateUser(username, password);
+    
+    if (result.success) {
+      onLogin(result.user);
+      navigate('/');
     } else {
-      setError('Invalid email or password');
+      setError(result.message);
     }
   };
 
@@ -24,13 +25,13 @@ const Login = ({ onLogin }) => {
     <div className="login-container">
       <form className="login-form" onSubmit={handleSubmit}>
         <h2>Login</h2>
-        {error && <p className="error">{error}</p>}
+        {error && <div className="error">{error}</div>}
         <div className="form-group">
-          <label>Email:</label>
+          <label>Username:</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             required
           />
         </div>
