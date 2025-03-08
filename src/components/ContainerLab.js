@@ -15,6 +15,7 @@ import { saveAs } from "file-saver";
 import "../styles.css";
 import ELK from 'elkjs/lib/elk.bundled.js'; // Update elk import
 import { Server, Loader2 } from "lucide-react";
+import LogModal from './LogModal';
 
 const elk = new ELK();
 
@@ -158,6 +159,9 @@ const App = () => {
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState(null);
   const [deployLoading, setDeployLoading] = useState({});
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [operationLogs, setOperationLogs] = useState('');
+  const [operationTitle, setOperationTitle] = useState('');
 
   // Add this near your other state declarations
   const imageOptions = [
@@ -301,142 +305,6 @@ const App = () => {
     [nodes, edges]
   );
 
-  // Update updateYaml function to include defaults section
-  // const updateYaml = (updatedNodes, updatedEdges) => {
-  //   const yamlData = {
-  //     name: topologyName,
-  //     topology: {
-  //       nodes: updatedNodes.reduce((acc, node) => {
-  //         const nodeConfig = {};
-  //         if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
-  //         if (node.data.image?.trim()) nodeConfig.image = node.data.image;
-  //         if (node.data.binds?.some(bind => bind.trim())) {
-  //           nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
-  //         }
-  //         if (node.data.mgmtIp?.trim()) nodeConfig["mgmt-ipv4"] = node.data.mgmtIp;
-          
-  //         if (Object.keys(nodeConfig).length > 0) {
-  //           acc[node.data.label] = nodeConfig;
-  //         }
-  //         return acc;
-  //       }, {}),
-  //       // Add defaults section
-  //       ...(showDefault && defaultKind && {
-  //         defaults: {
-  //           kind: defaultKind
-  //         }
-  //       }),
-  //       // Rest of the topology sections
-  //       ...(showKind && kinds.length > 0 && {
-  //         kinds: kinds.reduce((acc, kind) => {
-  //           if (kind.name) {
-  //             acc[kind.name] = {
-  //               ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
-  //               ...(kind.config.showImage && { image: kind.config.image }),
-  //               ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
-  //               ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
-  //             };
-  //           }
-  //           return acc;
-  //         }, {})
-  //       }),
-  //       links: updatedEdges.map((edge) => ({
-  //         endpoints: [
-  //           `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
-  //           `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
-  //         ]
-  //       }))
-  //     }
-  //   };
-
-  //   // Add management section if enabled
-  //   if (showMgmt) {
-  //     yamlData.mgmt = {
-  //       network: mgmtNetwork,
-  //       "ipv4-subnet": ipv4Subnet,
-  //       ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
-  //     };
-  //   }
-
-  //   const generatedYaml = yaml.dump(yamlData);
-  //   setYamlOutput(generatedYaml);
-  //   setEditableYaml(generatedYaml); // Update editableYaml state
-  // };
-  // const updateYaml = (updatedNodes, updatedEdges) => {
-  //   // Start with a base YAML structure
-  //   const yamlData = {};
-  
-  //   // Add topology name if provided
-  //   if (topologyName.trim()) {
-  //     yamlData.name = topologyName;
-  //   }
-  
-  //   // Add nodes to the topology section
-  //   if (updatedNodes.length > 0) {
-  //     yamlData.topology = yamlData.topology || {};
-  //     yamlData.topology.nodes = updatedNodes.reduce((acc, node) => {
-  //       const nodeConfig = {};
-  //       if (node.data.kind?.trim()) nodeConfig.kind = node.data.kind;
-  //       if (node.data.image?.trim()) nodeConfig.image = node.data.image;
-  //       if (node.data.binds?.some(bind => bind.trim())) {
-  //         nodeConfig.binds = node.data.binds.filter(bind => bind.trim());
-  //       }
-  //       if (node.data.mgmtIp?.trim()) nodeConfig['mgmt-ipv4'] = node.data.mgmtIp;
-  
-  //       acc[node.data.label] = nodeConfig;
-  //       return acc;
-  //     }, {});
-  //   }
-  
-  //   // Add links to the topology section
-  //   if (updatedEdges.length > 0) {
-  //     yamlData.topology = yamlData.topology || {};
-  //     yamlData.topology.links = updatedEdges.map((edge) => ({
-  //       endpoints: [
-  //         `${updatedNodes.find(n => n.id === edge.source).data.label}:${edge.data.sourceInterface}`,
-  //         `${updatedNodes.find(n => n.id === edge.target).data.label}:${edge.data.targetInterface}`
-  //       ]
-  //     }));
-  //   }
-  
-  //   // Add management section if enabled
-  //   if (showMgmt) {
-  //     yamlData.mgmt = {
-  //       network: mgmtNetwork,
-  //       "ipv4-subnet": ipv4Subnet,
-  //       ...(showIpv6 && ipv6Subnet && { "ipv6-subnet": ipv6Subnet })
-  //     };
-  //   }
-  
-  //   // Add kinds section if enabled
-  //   if (showKind && kinds.length > 0) {
-  //     yamlData.topology = yamlData.topology || {};
-  //     yamlData.topology.kinds = kinds.reduce((acc, kind) => {
-  //       if (kind.name) {
-  //         acc[kind.name] = {
-  //           ...(kind.config.showStartupConfig && { 'startup-config': kind.config.startupConfig }),
-  //           ...(kind.config.showImage && { image: kind.config.image }),
-  //           ...(kind.config.showExec && { exec: kind.config.exec.filter(e => e) }),
-  //           ...(kind.config.showBinds && { binds: kind.config.binds.filter(b => b) })
-  //         };
-  //       }
-  //       return acc;
-  //     }, {});
-  //   }
-  
-  //   // Add defaults section if enabled
-  //   if (showDefault && defaultKind.trim()) {
-  //     yamlData.topology = yamlData.topology || {};
-  //     yamlData.topology.defaults = { kind: defaultKind };
-  //   }
-  
-  //   // Generate the YAML output
-  //   const generatedYaml = yaml.dump(yamlData);
-    
-  //   // Update YAML state
-  //   setYamlOutput(generatedYaml);
-  //   setEditableYaml(generatedYaml); // Update editable YAML state
-  // };
   const updateYaml = (updatedNodes, updatedEdges) => {
     // Check if all inputs are empty
     const isEmpty =
@@ -753,42 +621,88 @@ const App = () => {
   };
 
   const handleServerDeploy = async (serverIp) => {
-    if (!topologyName.trim()) {
-      alert("Please enter a topology name before deploying");
-      return;
-    }
-
-    setDeployLoading(prev => ({ ...prev, [serverIp]: true }));
     try {
-      // First, create and download the YAML file locally
+      if (!topologyName.trim()) {
+        alert("Please enter a topology name before deploying");
+        return;
+      }
+
+      setDeployLoading(prev => ({ ...prev, [serverIp]: true }));
+      setOperationTitle('Deploying Topology');
+      setOperationLogs('');
+      setIsDeployModalOpen(false); // Close the server selection modal first
+      setShowLogModal(true);
+
+      // Create a Blob from the YAML content
       const fileName = `${topologyName}.yaml`;
-      const blob = new Blob([yamlOutput], { type: "text/yaml;charset=utf-8" });
-      
-      // Create FormData to send the file
+      const yamlBlob = new Blob([yamlOutput], { type: 'text/yaml;charset=utf-8' });
+      const yamlFile = new File([yamlBlob], fileName, { type: 'text/yaml' });
+
       const formData = new FormData();
-      formData.append('file', blob, fileName);
+      formData.append('file', yamlFile);
       formData.append('serverIp', serverIp);
 
-      // Send the file to your backend server which will handle the SSH transfer
       const response = await fetch(`http://${serverIp}:3001/api/containerlab/deploy`, {
         method: 'POST',
         body: formData
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to deploy topology to ${serverIp}`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let finalJsonStr = '';
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        const text = decoder.decode(value);
+        buffer += text;
+
+        // Split by newlines to process each line
+        const lines = buffer.split('\n');
+        // Keep the last potentially incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          try {
+            // Try to parse as JSON to see if it's the final message
+            const parsed = JSON.parse(line);
+            finalJsonStr = line;
+          } catch {
+            // If not JSON, it's a log line
+            setOperationLogs(prevLogs => prevLogs + line + '\n');
+          }
+        }
       }
 
-      const result = await response.json();
-      console.log('Deployment successful:', result);
-      alert(`Successfully deployed ${fileName} to ${serverIp}`);
+      // Process any remaining buffer
+      if (buffer) {
+        try {
+          JSON.parse(buffer);
+          finalJsonStr = buffer;
+        } catch {
+          setOperationLogs(prevLogs => prevLogs + buffer + '\n');
+        }
+      }
 
+      // Parse the final JSON message
+      const result = JSON.parse(finalJsonStr);
+      
+      if (result.success) {
+        setTimeout(() => {
+          setShowLogModal(false);
+          alert('Topology deployed successfully');
+        }, 2000);
+      } else {
+        alert(`Failed to deploy topology: ${result.error}`);
+      }
     } catch (error) {
-      console.error('Deployment failed:', error);
-      alert(`Failed to deploy to ${serverIp}: ${error.message}`);
+      console.error('Error deploying topology:', error);
+      alert(`Error deploying topology: ${error.message}`);
+      setShowLogModal(false);
     } finally {
       setDeployLoading(prev => ({ ...prev, [serverIp]: false }));
-      setIsDeployModalOpen(false);
     }
   };
 
@@ -1046,18 +960,6 @@ const App = () => {
     setShowKindModal(false);
     updateYaml(nodes, edges);
   };
-
-  // Add handler function
-  // const handleYamlChange = (event) => {
-  //   const newYaml = event.target.value;
-  //   setEditableYaml(newYaml);
-
-  //   const topology = convertYamlToTopology(newYaml, edges, nodes);
-  //   if (topology) {
-  //     setNodes(topology.nodes);
-  //     setEdges(topology.edges);
-  //   }
-  // };
 
   const handleYamlChange = (event) => {
     const newYaml = event.target.value;
@@ -1643,6 +1545,12 @@ const App = () => {
             </div>
           </div>
         )}
+        <LogModal
+          isOpen={showLogModal}
+          onClose={() => setShowLogModal(false)}
+          logs={operationLogs}
+          title={operationTitle}
+        />
       </div>
     </ReactFlowProvider>
   );

@@ -86,40 +86,45 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             return res.status(400).json({ error: 'Server IP is required' });
         }
 
+        // Set headers for streaming
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
         const ssh = new NodeSSH();
         
         // Connect to the remote server
         try {
-            console.log(`Connecting to server ${serverIp}...`);
+            res.write('Connecting to server...\n');
             await ssh.connect({
                 ...sshConfig,
                 host: serverIp,
             });
-            console.log('Connected successfully');
+            res.write('Connected successfully\n');
         } catch (error) {
-            return res.status(500).json({
-                error: `Failed to connect to server ${serverIp}: ${error.message}`
-            });
+            res.write(`Failed to connect to server: ${error.message}\n`);
+            res.end();
+            return;
         }
 
         const remoteFilePath = `/opt/${req.file.originalname}`;
 
         try {
             // Upload the file to the remote server
-            console.log(`Uploading file to ${remoteFilePath}`);
+            res.write(`Uploading file to ${remoteFilePath}...\n`);
             await ssh.putFile(req.file.path, remoteFilePath);
-            console.log('File uploaded successfully');
+            res.write('File uploaded successfully\n');
 
             // Execute containerlab deploy command
-            console.log('Executing containerlab deploy command...');
+            res.write('Executing containerlab deploy command...\n');
             const deployCommand = `clab deploy --topo ${req.file.originalname}`;
             const result = await ssh.execCommand(deployCommand, {
                 cwd: '/opt',
                 onStdout: (chunk) => {
-                    console.log('stdout:', chunk.toString('utf8'));
+                    res.write(`stdout: ${chunk.toString()}\n`);
                 },
                 onStderr: (chunk) => {
-                    console.error('stderr:', chunk.toString('utf8'));
+                    res.write(`stderr: ${chunk.toString()}\n`);
                 }
             });
 
@@ -127,19 +132,19 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             fs.unlinkSync(req.file.path);
             
             if (result.code === 0) {
-                res.json({
+                res.write('Operation completed successfully\n');
+                res.end(JSON.stringify({
                     success: true,
                     message: 'Topology deployed successfully',
-                    deploymentOutput: result.stdout,
                     filePath: remoteFilePath
-                });
+                }));
             } else {
-                res.status(500).json({
+                res.write(`Operation failed: ${result.stderr}\n`);
+                res.end(JSON.stringify({
                     success: false,
                     message: 'Deployment failed',
-                    error: result.stderr,
-                    command: deployCommand
-                });
+                    error: result.stderr
+                }));
             }
 
         } catch (error) {
@@ -148,11 +153,12 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
                 fs.unlinkSync(req.file.path);
             }
             
-            return res.status(500).json({
+            res.write(`Operation failed: ${error.message}\n`);
+            res.end(JSON.stringify({
                 error: `Deployment failed: ${error.message}`
-            });
+            }));
         } finally {
-            ssh.dispose(); // Always close the SSH connection
+            ssh.dispose();
         }
 
     } catch (error) {
@@ -161,9 +167,10 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             fs.unlinkSync(req.file.path);
         }
         
-        return res.status(500).json({
+        res.write(`Server error: ${error.message}\n`);
+        res.end(JSON.stringify({
             error: `Server error: ${error.message}`
-        });
+        }));
     }
 });
 
