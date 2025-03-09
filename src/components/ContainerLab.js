@@ -103,7 +103,7 @@ const convertYamlToTopology = (yamlString, existingEdges, existingNodes) => {
   }
 };
 
-const App = () => {
+const App = ({ user }) => {
   const reactFlowWrapper = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -325,7 +325,7 @@ const App = () => {
     const yamlData = {};
   
     if (topologyName.trim()) {
-      yamlData.name = topologyName;
+      yamlData.name = `${user?.username || ''}-${topologyName}`; // Use optional chaining
     }
   
     if (updatedNodes.length > 0) {
@@ -395,7 +395,7 @@ const App = () => {
     
     // Create new YAML data with updated topology name
     const yamlData = {
-      name: newTopologyName,
+      name: `${user?.username || ''}-${newTopologyName}`, // Use optional chaining
       topology: {
         nodes: nodes.reduce((acc, node) => {
           const nodeConfig = {};
