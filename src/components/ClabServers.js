@@ -322,7 +322,7 @@ const ClabServers = () => {
                               
                               if (result.success) {
                                 setTimeout(() => {
-                                  setShowLogModal(false);
+                                  setShowLogModal(true);
                                   alert('Topology destroyed successfully');
                                   fetchTopologies(selectedServer);
                                 }, 2000);

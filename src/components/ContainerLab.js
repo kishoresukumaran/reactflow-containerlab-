@@ -172,7 +172,7 @@ const App = ({ user }) => {
   // Add this near your other state declarations
   const imageOptions = [
     { value: "ceos:4.31.4M", label: "cEOS 4.31.4M" },
-    { value: "ceos:4.30.5M", label: "cEOS 4.30.5M" },
+    { value: "ceos:4.32.2F", label: "cEOS 4.32.2F" },
     { value: "ceos:4.29.5M", label: "cEOS 4.29.5M" },
     { value: "cvp:2023.3.0", label: "CVP 2023.3.0" },
     { value: "cvp:2023.2.0", label: "CVP 2023.2.0" },
@@ -704,7 +704,7 @@ const App = ({ user }) => {
       
       if (result.success) {
         setTimeout(() => {
-          setShowLogModal(false);
+          setShowLogModal(true);
           alert('Topology deployed successfully');
         }, 2000);
       } else {
