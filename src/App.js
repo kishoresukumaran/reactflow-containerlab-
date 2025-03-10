@@ -4,30 +4,30 @@ import ContainerLab from './components/ContainerLab';
 import ACT from './components/ACT';
 import ClabServers from './components/ClabServers';
 import Login from './components/Login';
+import WebTerminal from './components/WebTerminal';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null); // Add state for user information
+  const [user, setUser] = useState(null);
 
-  // Handle login and save user info
   const handleLogin = (userInfo) => {
     setIsAuthenticated(true);
-    setUser(userInfo); // Save user information (e.g., name or email)
+    setUser(userInfo);
   };
 
-  // Handle logout
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setUser(null); // Clear user information
+    setUser(null);
   };
 
   return (
     <Router>
       <Routes>
-        {/* Login Route */}
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
-
-        {/* Protected Routes */}
+        <Route 
+          path="/terminal/:serverIp/:nodeName/:nodeIp" 
+          element={<WebTerminal />} 
+        />
         <Route
           path="/*"
           element={
@@ -72,7 +72,6 @@ const MainApp = ({ user, onLogout }) => {
         <div className="header-title">
           <h1>Container Lab Topology Designer</h1> 
         </div>
-        {/* Display user info and logout button */}
         <div className="user-info">
           <div className='user-name'>
             Welcome, {user?.displayName || user?.username}!
@@ -81,7 +80,6 @@ const MainApp = ({ user, onLogout }) => {
         </div>
       </div>
 
-      {/* Render components based on mode */}
       {mode === 'containerlab' ? (
         <ContainerLab user={user} onLogout={onLogout} />
       ) : mode === 'act' ? (

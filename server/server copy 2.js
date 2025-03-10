@@ -434,16 +434,8 @@ if (!fs.existsSync(uploadDir)) {
 wss.on('connection', (ws, req) => {
   console.log('New WebSocket connection established');
   let sshClient = null;
-  let sshStream = null;
 
   ws.on('message', async (message) => {
-    // If we already have an SSH stream, send the data directly
-    if (sshStream) {
-      sshStream.write(message.toString());
-      return;
-    }
-
-    // Otherwise, try to parse as JSON for initial connection
     try {
       const data = JSON.parse(message);
       console.log('Received connection request:', data);
@@ -504,7 +496,6 @@ wss.on('connection', (ws, req) => {
           }
 
           console.log('Shell created successfully');
-          sshStream = stream;
 
           // Handle data from SSH stream
           stream.on('data', (data) => {
@@ -512,11 +503,16 @@ wss.on('connection', (ws, req) => {
             ws.send(output);
           });
 
+          // Handle data from WebSocket
+          ws.on('message', (data) => {
+            // Convert Buffer to string and write directly to stream
+            stream.write(data.toString());
+          });
+
           // Handle stream close
           stream.on('close', () => {
             console.log('SSH stream closed');
             sshClient.end();
-            sshStream = null;
           });
         });
       });

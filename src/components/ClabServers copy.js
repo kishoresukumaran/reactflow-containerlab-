@@ -240,7 +240,7 @@ const ClabServers = () => {
                               
                               if (result.success) {
                                 setTimeout(() => {
-                                  setShowLogModal(false);
+                                  setShowLogModal(true);
                                   alert('Topology reconfigured successfully');
                                   fetchTopologies(selectedServer);
                                 }, 2000);
@@ -322,7 +322,7 @@ const ClabServers = () => {
                               
                               if (result.success) {
                                 setTimeout(() => {
-                                  setShowLogModal(false);
+                                  setShowLogModal(true);
                                   alert('Topology destroyed successfully');
                                   fetchTopologies(selectedServer);
                                 }, 2000);
@@ -338,6 +338,32 @@ const ClabServers = () => {
                         }}
                       >
                         Destroy
+                      </button>
+                      <button 
+                        className="action-button ssh-button"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            setOperationTitle('SSH Access');
+                            setOperationLogs('');
+                            setShowLogModal(true);
+
+                            // Add SSH access logic here
+                            setOperationLogs(prevLogs => prevLogs + 'SSH access information will be displayed here\n');
+                            
+                            setTimeout(() => {
+                              setShowLogModal(false);
+                            }, 2000);
+                          } catch (error) {
+                            console.error('Error getting SSH access:', error);
+                            setOperationLogs(prevLogs => prevLogs + `Error: ${error.message}\n`);
+                            setTimeout(() => {
+                              setShowLogModal(false);
+                            }, 2000);
+                          }
+                        }}
+                      >
+                        SSH
                       </button>
                     </div>
                     {/* <div className={`expand-button ${expanded[selectedServer]?.[topology.topology] ? 'expanded' : ''}`}>

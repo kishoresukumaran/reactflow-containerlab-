@@ -4,26 +4,55 @@ import ContainerLab from './components/ContainerLab';
 import ACT from './components/ACT';
 import ClabServers from './components/ClabServers';
 import Login from './components/Login';
+import WebTerminal from './components/WebTerminal';
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
 
-  const handleLogin = () => {
+  const handleLogin = (userInfo) => {
     setIsAuthenticated(true);
+    setUser(userInfo);
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setUser(null);
   };
 
   return (
     <Router>
       <Routes>
-        {/* Login Route */}
-        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        {/* Login Route - Always accessible */}
+        <Route 
+          path="/login" 
+          element={
+            isAuthenticated ? (
+              <Navigate to="/" replace />
+            ) : (
+              <Login onLogin={handleLogin} />
+            )
+          } 
+        />
 
-        {/* Protected Routes */}
+        {/* Terminal Route - Protected */}
+        <Route 
+          path="/terminal/:serverIp/:nodeName/:nodeIp" 
+          element={
+            isAuthenticated ? (
+              <WebTerminal />
+            ) : (
+              <Navigate to="/login" replace />
+            )
+          } 
+        />
+
+        {/* Main App Routes - Protected */}
         <Route
           path="/*"
           element={
             isAuthenticated ? (
-              <MainApp />
+              <MainApp user={user} onLogout={handleLogout} />
             ) : (
               <Navigate to="/login" replace />
             )
@@ -34,7 +63,7 @@ const App = () => {
   );
 };
 
-const MainApp = () => {
+const MainApp = ({ user, onLogout }) => {
   const [mode, setMode] = useState('containerlab');
 
   return (
@@ -60,15 +89,23 @@ const MainApp = () => {
             Servers
           </button>
         </div>
-        <h1>Container Lab Topology Designer</h1>
+        <div className="header-title">
+          <h1>Container Lab Topology Designer</h1> 
+        </div>
+        <div className="user-info">
+          <div className='user-name'>
+            Welcome, {user?.displayName || user?.username}!
+          </div>
+          <button onClick={onLogout}>Logout</button>
+        </div>
       </div>
 
       {mode === 'containerlab' ? (
-        <ContainerLab />
+        <ContainerLab user={user} onLogout={onLogout} />
       ) : mode === 'act' ? (
-        <ACT />
+        <ACT user={user} onLogout={onLogout} />
       ) : (
-        <ClabServers />
+        <ClabServers user={user} onLogout={onLogout} />
       )}
     </div>
   );
