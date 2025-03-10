@@ -335,81 +335,13 @@ app.post('/api/containerlab/reconfigure', async (req, res) => {
     }
 });
 
-// Add get free ports endpoint
-// Free ports endpoint
-app.get('/api/ports/free', async (req, res) => {
-    try {
-        const { serverIp } = req.query;
-        
-        // Validate IP format
-        if (!serverIp || !/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(serverIp)) {
-            return res.status(400).json({ 
-                success: false,
-                error: 'Valid IPv4 address required' 
-            });
-        }
-
-        const ssh = new NodeSSH();
-        
-        try {
-            await ssh.connect({
-                ...sshConfig,
-                host: serverIp,
-            });
-
-            // Optimized port finding script
-            const findPortsScript = `
-                #!/bin/bash
-                used_ports=$(ss -tuln | awk '{print $5}' | awk -F: '{print $NF}' | sort -nu)
-                comm -23 <(seq 1024 65535 | sort) <(echo "$used_ports") | tr '\n' ' '
-            `;
-
-            const result = await ssh.execCommand(findPortsScript, {
-                execOptions: { timeout: 10000 }
-            });
-            
-            if (result.code === 0) {
-                const freePorts = result.stdout
-                    .trim()
-                    .split(/\s+/)
-                    .filter(Boolean)
-                    .map(Number);
-                    
-                res.json({
-                    success: true,
-                    freePorts: freePorts,
-                    count: freePorts.length
-                });
-            } else {
-                res.status(500).json({
-                    success: false,
-                    error: `Port scan failed: ${result.stderr || 'Unknown error'}`
-                });
-            }
-
-        } catch (error) {
-            res.status(500).json({
-                success: false,
-                error: `SSH connection failed: ${error.message}`
-            });
-        } finally {
-            ssh.dispose();
-        }
-
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            error: `Server error: ${error.message}`
-        });
-    }
-});
-
-// Create uploads directory
+// Create uploads directory on server start
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
+    console.log('Created uploads directory');
 }
 
 app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+    console.log(`Server listening at http://localhost:${port}`);
 });

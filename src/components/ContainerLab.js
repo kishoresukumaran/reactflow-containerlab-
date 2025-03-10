@@ -162,6 +162,12 @@ const App = ({ user }) => {
   const [showLogModal, setShowLogModal] = useState(false);
   const [operationLogs, setOperationLogs] = useState('');
   const [operationTitle, setOperationTitle] = useState('');
+  const [showSshPortForwarding, setShowSshPortForwarding] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [selectedSshServer, setSelectedSshServer] = useState('');
+  const [freePorts, setFreePorts] = useState([]);
+  const [isLoadingPorts, setIsLoadingPorts] = useState(false);
 
   // Add this near your other state declarations
   const imageOptions = [
@@ -178,6 +184,13 @@ const App = ({ user }) => {
     { value: "ceos", label: "cEOS" },
     { value: "linux", label: "Linux" },
     { value: "veos", label: "vEOS" }
+  ];
+
+  // Add server options constant
+  const serverOptions = [
+    { value: "10.83.12.71", label: "10.83.12.71" },
+    { value: "10.83.12.72", label: "10.83.12.72" },
+    { value: "10.83.12.73", label: "10.83.12.73" }
   ];
 
   const handleModeChange = (newMode) => {
@@ -1013,6 +1026,73 @@ const App = ({ user }) => {
       setYamlParseError(`Error parsing YAML: ${error.message}`);
     }
   };
+
+  // Update the handler to check for nodes
+  const handleSshPortForwardingCheckbox = (e) => {
+    if (!validateTopologyName()) {
+      return;
+    }
+
+    // Check if there are any nodes in the topology
+    const hasNodes = nodes.length > 0;
+
+    if (!hasNodes && e.target.checked) {
+      setErrorMessage('There are no nodes in the topology. Please create nodes first.');
+      setShowErrorModal(true);
+      return;
+    }
+
+    setShowSshPortForwarding(e.target.checked);
+    updateYaml(nodes, edges);
+  };
+
+  // Add handler for server selection
+  const handleSshServerChange = (e) => {
+    setSelectedSshServer(e.target.value);
+  };
+
+  // Update the submit handler
+  const handleSshPortForwardingSubmit = async () => {
+    try {
+      setIsLoadingPorts(true);
+      const response = await fetch(`http://${selectedSshServer}:3001/api/ports/free?serverIp=${selectedSshServer}`);
+      const data = await response.json();
+      
+      if (data.success && data.freePorts.length > 0) {
+        setFreePorts(data.freePorts);
+        
+        // Update YAML with port mappings
+        const updatedYaml = yaml.load(yamlOutput);
+        let portIndex = 0;
+        
+        // Add ports to each node
+        Object.keys(updatedYaml.topology.nodes).forEach(nodeName => {
+          if (portIndex < data.freePorts.length) {
+            const node = updatedYaml.topology.nodes[nodeName];
+            node.ports = [`${data.freePorts[portIndex]}:22/tcp`];
+            portIndex++;
+          }
+        });
+        
+        // Update the YAML output
+        const newYamlOutput = yaml.dump(updatedYaml);
+        setYamlOutput(newYamlOutput);
+        setEditableYaml(newYamlOutput);
+        
+        // Show success message
+        setOperationTitle('SSH Port Forwarding');
+        setOperationLogs('Successfully added SSH port forwarding to all nodes');
+        setShowLogModal(true);
+      } else {
+        throw new Error('No free ports available');
+      }
+    } catch (error) {
+      setErrorMessage(`Failed to get free ports: ${error.message}`);
+      setShowErrorModal(true);
+    } finally {
+      setIsLoadingPorts(false);
+    }
+  };
   
   return (
     <ReactFlowProvider>
@@ -1150,6 +1230,42 @@ const App = ({ user }) => {
                         </option>
                       ))}
                     </select>
+                  </div>
+                )}
+                <div className="checkbox-group">
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={showSshPortForwarding}
+                      onChange={handleSshPortForwardingCheckbox}
+                    />
+                    Add SSH Port Forwarding
+                  </label>
+                </div>
+                {showSshPortForwarding && (
+                  <div className="ssh-forwarding-section">
+                    <div className="input-group">
+                      <label>Select Server:</label>
+                      <select
+                        value={selectedSshServer}
+                        onChange={handleSshServerChange}
+                        className="image-select"
+                      >
+                        <option value="">Select a server</option>
+                        {serverOptions.map((server) => (
+                          <option key={server.value} value={server.value}>
+                            {server.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <button 
+                      className="submit-button"
+                      onClick={handleSshPortForwardingSubmit}
+                      disabled={!selectedSshServer || isLoadingPorts}
+                    >
+                      {isLoadingPorts ? 'Loading Ports...' : 'Submit'}
+                    </button>
                   </div>
                 )}
                 <button className="reset-button" onClick={handleReset}>
@@ -1551,6 +1667,15 @@ const App = ({ user }) => {
           logs={operationLogs}
           title={operationTitle}
         />
+        {showErrorModal && (
+          <div className="modal warning-modal">
+            <div className="modal-content">
+              <h3>Error</h3>
+              <p>{errorMessage}</p>
+              <button onClick={() => setShowErrorModal(false)}>OK</button>
+            </div>
+          </div>
+        )}
       </div>
     </ReactFlowProvider>
   );
