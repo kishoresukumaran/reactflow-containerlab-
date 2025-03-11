@@ -70,7 +70,7 @@ const MainApp = ({ user, onLogout }) => {
           </button>
         </div>
         <div className="header-title">
-          <h1>Container Lab Topology Designer</h1> 
+          <h1>Container Lab Studio</h1> 
         </div>
         <div className="user-info">
           <div className='user-name'>

@@ -1095,6 +1095,12 @@ const App = ({ user }) => {
     }
   };
   
+  // Add this near your other handler functions
+  const handleImport = () => {
+    // Placeholder for import functionality
+    console.log('Import button clicked');
+  };
+
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -1303,6 +1309,7 @@ const App = ({ user }) => {
                 <div className="button-group">
                   <button onClick={handleDownloadYaml} disabled={!yamlOutput.trim()}>Download YAML</button>
                   <button className="deploy-button" onClick={handleDeploy} disabled={!yamlOutput.trim()}>Deploy</button>
+                  <button onClick={handleImport} disabled={!yamlOutput.trim()}>Import</button>
                 </div>
               </div>
             </>
