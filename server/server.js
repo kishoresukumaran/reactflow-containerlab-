@@ -153,9 +153,15 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             return;
         }
 
-        const remoteFilePath = `/opt/${req.file.originalname}`;
+        const remoteFilePath = `/opt/containerlab_topologies/${req.file.originalname}`;
 
         try {
+            // Create the containerlab_topologies directory if it doesn't exist
+            res.write('Ensuring target directory exists...\n');
+            await ssh.execCommand('mkdir -p /opt/containerlab_topologies', {
+                cwd: '/'
+            });
+
             // Upload the file to the remote server
             res.write(`Uploading file to ${remoteFilePath}...\n`);
             await ssh.putFile(req.file.path, remoteFilePath);
