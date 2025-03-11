@@ -122,6 +122,8 @@ const WebTerminal = () => {
             console.log('Received message:', event.data);
           if (terminal.current) {
             terminal.current.write(event.data);
+            // Hide the connecting message once we receive data
+            setIsConnecting(false);
           }
         };
 

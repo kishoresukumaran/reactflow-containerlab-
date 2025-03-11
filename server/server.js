@@ -57,7 +57,27 @@ const sshConfig = {
     readyTimeout: 5000
 };
 
-// Existing inspect endpoint
+// Add this function near the top of the file, after the imports
+const resolvePath = (relativePath, basePath = '/opt') => {
+    if (relativePath.startsWith('/')) {
+        return relativePath;
+    }
+    // Handle ../ patterns
+    const parts = relativePath.split('/');
+    const baseParts = basePath.split('/');
+    
+    for (const part of parts) {
+        if (part === '..') {
+            baseParts.pop();
+        } else if (part !== '.') {
+            baseParts.push(part);
+        }
+    }
+    
+    return baseParts.join('/');
+};
+
+// Modify the inspect endpoint
 app.get('/api/containerlab/inspect', (req, res) => {
     exec('clab inspect --all --format json', (error, stdout, stderr) => {
         if (error) {
@@ -71,16 +91,22 @@ app.get('/api/containerlab/inspect', (req, res) => {
 
             // Group nodes by topology file
             data.containers.forEach(container => {
-                if (!labsByFile[container.labPath]) {
-                    labsByFile[container.labPath] = {
-                        labPath: container.labPath,
+                // Resolve the full path for the topology file
+                const fullLabPath = resolvePath(container.labPath);
+                
+                if (!labsByFile[fullLabPath]) {
+                    labsByFile[fullLabPath] = {
+                        labPath: fullLabPath, // Use the full path
                         lab_name: container.lab_name,
                         lab_owner: container.owner,
                         nodes: []
                     };
-                    topologies.push(labsByFile[container.labPath]);
+                    topologies.push(labsByFile[fullLabPath]);
                 }
-                labsByFile[container.labPath].nodes.push(container);
+                labsByFile[fullLabPath].nodes.push({
+                    ...container,
+                    labPath: fullLabPath // Also update the path in the node data
+                });
             });
 
             res.json(topologies);
@@ -135,11 +161,11 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             await ssh.putFile(req.file.path, remoteFilePath);
             res.write('File uploaded successfully\n');
 
-            // Execute containerlab deploy command
+            // Execute containerlab deploy command with absolute path
             res.write('Executing containerlab deploy command...\n');
-            const deployCommand = `clab deploy --topo ${req.file.originalname}`;
+            const deployCommand = `clab deploy --topo ${remoteFilePath}`;
             const result = await ssh.execCommand(deployCommand, {
-                cwd: '/opt',
+                cwd: '/', // Use root directory to ensure absolute paths work correctly
                 onStdout: (chunk) => {
                     res.write(`stdout: ${chunk.toString()}\n`);
                 },
@@ -199,7 +225,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok' });
 });
 
-// Add destroy topology endpoint
+// Modify the destroy endpoint
 app.post('/api/containerlab/destroy', async (req, res) => {
     try {
         const { serverIp, topoFile } = req.body;
@@ -234,9 +260,11 @@ app.post('/api/containerlab/destroy', async (req, res) => {
         try {
             // Execute containerlab destroy command
             res.write('Executing containerlab destroy command...\n');
-            const destroyCommand = `clab destroy --topo ${topoFile}`;
+            // Ensure we have an absolute path
+            const absoluteTopoPath = resolvePath(topoFile);
+            const destroyCommand = `clab destroy --topo ${absoluteTopoPath}`;
             const result = await ssh.execCommand(destroyCommand, {
-                cwd: '/opt',
+                cwd: '/', // Use root directory to ensure absolute paths work correctly
                 onStdout: (chunk) => {
                     res.write(`stdout: ${chunk.toString()}\n`);
                 },
@@ -277,7 +305,7 @@ app.post('/api/containerlab/destroy', async (req, res) => {
     }
 });
 
-// Add reconfigure topology endpoint
+// Modify the reconfigure endpoint
 app.post('/api/containerlab/reconfigure', async (req, res) => {
     try {
         const { serverIp, topoFile } = req.body;
@@ -312,9 +340,11 @@ app.post('/api/containerlab/reconfigure', async (req, res) => {
         try {
             // Execute containerlab reconfigure command
             res.write('Executing containerlab reconfigure command...\n');
-            const reconfigureCommand = `clab deploy --topo ${topoFile} --reconfigure`;
+            // Ensure we have an absolute path
+            const absoluteTopoPath = resolvePath(topoFile);
+            const reconfigureCommand = `clab deploy --topo ${absoluteTopoPath} --reconfigure`;
             const result = await ssh.execCommand(reconfigureCommand, {
-                cwd: '/opt',
+                cwd: '/', // Use root directory to ensure absolute paths work correctly
                 onStdout: (chunk) => {
                     res.write(`stdout: ${chunk.toString()}\n`);
                 },
