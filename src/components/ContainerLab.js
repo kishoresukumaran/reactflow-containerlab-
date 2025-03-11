@@ -654,6 +654,7 @@ const App = ({ user }) => {
       const formData = new FormData();
       formData.append('file', yamlFile);
       formData.append('serverIp', serverIp);
+      formData.append('username', user.username);
 
       const response = await fetch(`http://${serverIp}:3001/api/containerlab/deploy`, {
         method: 'POST',

@@ -4,19 +4,31 @@
       "username": "admin",
       "password": "arastra",
       "role": "admin",
-      "displayName": "Admin"
+      "displayName": "admin"
     },
     {
-      "username": "user1",
+      "username": "jaime.c",
       "password": "passwor",
       "role": "user",
-      "displayName": "Test User"
+      "displayName": "jaime.c"
     },
     {
       "username": "kishore",
       "password": "arastra",
       "role": "user",
-      "displayName": "Test User"
+      "displayName": "kishore"
+    },
+    {
+      "username": "diogo",
+      "password": "arastra",
+      "role": "user",
+      "displayName": "diogo"
+    },
+    {
+      "username": "allan.costa",
+      "password": "arastra",
+      "role": "user",
+      "displayName": "allan.costa"
     }
   ]
 } 

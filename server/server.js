@@ -127,9 +127,12 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             return res.status(400).json({ error: 'No file uploaded' });
         }
 
-        const { serverIp } = req.body;
+        const { serverIp, username } = req.body;
         if (!serverIp) {
             return res.status(400).json({ error: 'Server IP is required' });
+        }
+        if (!username) {
+            return res.status(400).json({ error: 'Username is required' });
         }
 
         // Set headers for streaming
@@ -153,12 +156,14 @@ app.post('/api/containerlab/deploy', upload.single('file'), async (req, res) => 
             return;
         }
 
-        const remoteFilePath = `/opt/containerlab_topologies/${req.file.originalname}`;
+        // Create user-specific path for the topology file
+        const userDir = `/opt/containerlab_topologies/${username}`;
+        const remoteFilePath = `${userDir}/${req.file.originalname}`;
 
         try {
-            // Create the containerlab_topologies directory if it doesn't exist
-            res.write('Ensuring target directory exists...\n');
-            await ssh.execCommand('mkdir -p /opt/containerlab_topologies', {
+            // Create the user-specific directory if it doesn't exist
+            res.write(`Ensuring user directory exists at ${userDir}...\n`);
+            await ssh.execCommand(`mkdir -p ${userDir}`, {
                 cwd: '/'
             });
 
