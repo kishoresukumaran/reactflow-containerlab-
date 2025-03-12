@@ -465,6 +465,72 @@ app.get('/api/ports/free', async (req, res) => {
     }
 });
 
+// Add these new endpoints
+app.get('/api/files/list', async (req, res) => {
+  try {
+    const { path, serverIp } = req.query;
+    
+    if (!serverIp) {
+      return res.status(400).json({ success: false, error: 'Server IP is required' });
+    }
+
+    const ssh = new NodeSSH();
+    await ssh.connect({
+      ...sshConfig,
+      host: serverIp
+    });
+
+    // List directory contents
+    const { stdout } = await ssh.execCommand(`ls -la ${path}`, { cwd: '/' });
+    
+    // Parse the ls output to get files and directories
+    const contents = stdout.split('\n')
+      .slice(1) // Skip the total line
+      .filter(line => line.trim() && !line.endsWith('.') && !line.endsWith('..'))
+      .map(line => {
+        const parts = line.split(/\s+/);
+        const name = parts.slice(8).join(' ');
+        const isDirectory = line.startsWith('d');
+        return {
+          name,
+          type: isDirectory ? 'directory' : 'file',
+          path: `${path}/${name}`
+        };
+      });
+
+    await ssh.dispose();
+    res.json({ success: true, contents });
+  } catch (error) {
+    console.error('Error listing directory:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.get('/api/files/read', async (req, res) => {
+  try {
+    const { path, serverIp } = req.query;
+    
+    if (!serverIp) {
+      return res.status(400).json({ success: false, error: 'Server IP is required' });
+    }
+
+    const ssh = new NodeSSH();
+    await ssh.connect({
+      ...sshConfig,
+      host: serverIp
+    });
+
+    // Read file contents
+    const { stdout } = await ssh.execCommand(`cat ${path}`, { cwd: '/' });
+    
+    await ssh.dispose();
+    res.json({ success: true, content: stdout });
+  } catch (error) {
+    console.error('Error reading file:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Create uploads directory
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {

@@ -1,34 +1,52 @@
 import React from 'react';
 
-const LogModal = ({ isOpen, onClose, logs, title }) => {
+const LogModal = ({ isOpen, onClose, logs, title, showSuccess = false, onNavigateToServers }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="logModal-overlay">
-      <div className="logModal-container">
-        <div className="logModal-header">
-          <h2 className="logModal-title">{title}</h2>
-          <button
-            onClick={onClose}
-            className="logModal-close-button"
-          >
-            <svg className="logModal-close-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+    <div className="modal">
+      <div className="modal-content" style={{ width: '80%', maxWidth: '800px' }}>
+        <h2>{title}</h2>
+        <div className="log-content" style={{ 
+          maxHeight: '400px', 
+          overflowY: 'auto', 
+          whiteSpace: 'pre-wrap',
+          backgroundColor: '#f5f5f5',
+          padding: '10px',
+          marginBottom: '20px',
+          fontFamily: 'monospace'
+        }}>
+          {logs}
         </div>
-        <div className="logModal-content">
-          <pre className="logModal-logs">
-            {logs}
-          </pre>
-        </div>
-        <div className="logModal-footer">
-          <button
-            onClick={onClose}
-            className="logModal-close-btn"
-          >
-            Close
-          </button>
+        {showSuccess && (
+          <div style={{ 
+            marginBottom: '20px', 
+            padding: '10px', 
+            backgroundColor: '#e6ffe6', 
+            borderRadius: '4px',
+            textAlign: 'center' 
+          }}>
+            <p style={{ marginBottom: '10px' }}>
+              Deployment successful! Please check Servers page to access the nodes.
+            </p>
+            <button
+              onClick={onNavigateToServers}
+              style={{
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                padding: '8px 16px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                marginRight: '10px'
+              }}
+            >
+              Go to Servers
+            </button>
+          </div>
+        )}
+        <div className="actions" style={{ textAlign: 'right' }}>
+          <button onClick={onClose}>Close</button>
         </div>
       </div>
     </div>

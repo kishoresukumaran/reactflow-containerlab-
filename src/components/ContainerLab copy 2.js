@@ -104,7 +104,7 @@ const convertYamlToTopology = (yamlString, existingEdges, existingNodes) => {
   }
 };
 
-const App = ({ user, parentSetMode }) => {
+const App = ({ user }) => {
   const reactFlowWrapper = useRef(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -170,13 +170,12 @@ const App = ({ user, parentSetMode }) => {
   const [freePorts, setFreePorts] = useState([]);
   const [isLoadingPorts, setIsLoadingPorts] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [deploymentSuccess, setDeploymentSuccess] = useState(false);
 
   // Add this near your other state declarations
   const imageOptions = [
-    { value: "ceos:4.31.4M", label: "cEOS 4.31.4M", kind: "ceos" },
-    { value: "ceos:4.32.2F", label: "cEOS 4.32.2F", kind: "ceos" },
-    { value: "alpine", label: "Linux Host", kind: "linux" }
+    { value: "ceos:4.31.4M", label: "cEOS 4.31.4M" },
+    { value: "ceos:4.32.2F", label: "cEOS 4.32.2F" },
+    { value: "alpine", label: "Linux Host" }
   ];
 
   // Add this near your other state declarations and imageOptions
@@ -184,12 +183,6 @@ const App = ({ user, parentSetMode }) => {
     { value: "ceos", label: "cEOS" },
     { value: "linux", label: "Linux" },
   ];
-
-  // Add this function to filter images based on selected kind
-  const getFilteredImageOptions = () => {
-    if (!nodeKind) return [];
-    return imageOptions.filter(option => option.kind === nodeKind);
-  };
 
   // Add server options constant
   const serverOptions = [
@@ -645,11 +638,10 @@ const App = ({ user, parentSetMode }) => {
         return;
       }
 
-      setDeploymentSuccess(false); // Reset success state
       setDeployLoading(prev => ({ ...prev, [serverIp]: true }));
       setOperationTitle('Deploying Topology');
       setOperationLogs('');
-      setIsDeployModalOpen(false);
+      setIsDeployModalOpen(false); // Close the server selection modal first
       setShowLogModal(true);
 
       // Create a Blob from the YAML content
@@ -710,9 +702,9 @@ const App = ({ user, parentSetMode }) => {
       const result = JSON.parse(finalJsonStr);
       
       if (result.success) {
-        setDeploymentSuccess(true);
         setTimeout(() => {
           setShowLogModal(true);
+          alert('Topology deployed successfully');
         }, 2000);
       } else {
         alert(`Failed to deploy topology: ${result.error}`);
@@ -1114,12 +1106,6 @@ const App = ({ user, parentSetMode }) => {
     handleYamlChange({ target: { value: content } });
   };
 
-  // Update the handleNavigateToServers function
-  const handleNavigateToServers = () => {
-    parentSetMode('servers');
-    setShowLogModal(false);
-  };
-
   return (
     <ReactFlowProvider>
       <div className="app">
@@ -1369,7 +1355,6 @@ const App = ({ user, parentSetMode }) => {
                     onChange={(e) => {
                       const newValue = e.target.value;
                       setNodeKind(newValue);
-                      setNodeImage(''); // Reset image when kind changes
                       handleNodeKindChange({ target: { value: newValue } });
                     }}
                     className={`image-select ${nodeModalWarning && !nodeKind.trim() ? 'input-error' : ''}`}
@@ -1392,10 +1377,9 @@ const App = ({ user, parentSetMode }) => {
                       handleNodeImageChange({ target: { value: newValue } });
                     }}
                     className="image-select"
-                    disabled={!nodeKind}
                   >
                     <option value="">Select an image</option>
-                    {getFilteredImageOptions().map((option) => (
+                    {imageOptions.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
                       </option>
@@ -1475,12 +1459,10 @@ const App = ({ user, parentSetMode }) => {
                     className="image-select"
                   >
                     <option value="">Select an image</option>
-                    {imageOptions
-                      .filter(option => option.kind === kinds[currentKindIndex].name)
-                      .map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
+                    {imageOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
                     ))}
                   </select>
                 )}
@@ -1694,14 +1676,9 @@ const App = ({ user, parentSetMode }) => {
         )}
         <LogModal
           isOpen={showLogModal}
-          onClose={() => {
-            setShowLogModal(false);
-            setDeploymentSuccess(false);
-          }}
+          onClose={() => setShowLogModal(false)}
           logs={operationLogs}
           title={operationTitle}
-          showSuccess={deploymentSuccess}
-          onNavigateToServers={handleNavigateToServers}
         />
         {showErrorModal && (
           <div className="modal warning-modal">

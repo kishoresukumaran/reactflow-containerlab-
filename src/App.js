@@ -81,7 +81,7 @@ const MainApp = ({ user, onLogout }) => {
       </div>
 
       {mode === 'containerlab' ? (
-        <ContainerLab user={user} onLogout={onLogout} />
+        <ContainerLab user={user} onLogout={onLogout} parentSetMode={setMode} />
       ) : mode === 'act' ? (
         <ACT user={user} onLogout={onLogout} />
       ) : (
