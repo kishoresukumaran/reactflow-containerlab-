@@ -1,9 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const SshModal = ({ isOpen, onClose, nodes, serverIp }) => {
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  
   if (!isOpen) return null;
 
-  const handleConnect = (nodeName, nodeIp) => {
+  const handleConnect = (nodeName, nodeIp, nodeState) => {
+    if (nodeState !== 'running') {
+      setShowErrorModal(true);
+      return;
+    }
     // Open terminal in new tab
     const terminalUrl = `/terminal/${encodeURIComponent(serverIp)}/${encodeURIComponent(nodeName)}/${encodeURIComponent(nodeIp)}`;
     window.open(terminalUrl, '_blank');
@@ -72,7 +78,7 @@ const SshModal = ({ isOpen, onClose, nodes, serverIp }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button 
                       className="text-sm text-blue-600 hover:text-blue-800"
-                      onClick={() => handleConnect(node.name, node.ipAddress[0])}
+                      onClick={() => handleConnect(node.name, node.ipAddress[0], node.state)}
                     >
                       Connect
                     </button>
@@ -86,6 +92,15 @@ const SshModal = ({ isOpen, onClose, nodes, serverIp }) => {
           <button onClick={onClose}>Close</button>
         </div>
       </div>
+      {showErrorModal && (
+        <div className="modal warning-modal">
+          <div className="modal-content">
+            <h3>Warning</h3>
+            <p>This node is not in running state, consider reconfiguring the lab</p>
+            <button onClick={() => setShowErrorModal(false)}>OK</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
